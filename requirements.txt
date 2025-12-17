@@ -1,0 +1,19 @@
+# Stock Market ML Analysis - Core Dependencies
+pandas>=2.0.0
+numpy>=1.24.0
+scikit-learn>=1.3.0
+joblib>=1.3.0
+
+# Utilities (REQUIRED)
+tqdm==4.66.1
+joblib==1.3.2
+
+# Jupyter Notebook (REQUIRED)
+jupyter==1.0.0
+ipykernel==6.27.1
+
+# Time Series Analysis (OPTIONAL - for advanced analysis)
+statsmodels==0.14.1
+
+# Model Interpretation (OPTIONAL - for feature analysis) 
+shap==0.44.0
