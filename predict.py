@@ -34,7 +34,7 @@ def predict_stock_price(open_price, high, low, volume, prev_close=None):
     if prev_close is None:
         prev_close = open_price
     
-    # Create feature data
+    # Create feature data with new technical indicators
     prediction_data = {
         'Open': open_price,
         'High': high,
@@ -43,9 +43,17 @@ def predict_stock_price(open_price, high, low, volume, prev_close=None):
         'Price_Change': high - open_price,  # Approximate
         'Price_Range': high - low,
         'Returns': (open_price - prev_close) / prev_close if prev_close > 0 else 0,
-        'SMA_5': prev_close,  # Approximate with previous close
         'SMA_10': prev_close,  # Approximate with previous close
-        'Volatility': 0.02,  # Default 2% volatility
+        'SMA_50': prev_close,  # Approximate with previous close
+        'EMA_12': prev_close,  # Approximate with previous close
+        'EMA_26': prev_close,  # Approximate with previous close
+        'RSI_14': 50,  # Neutral RSI
+        'MACD': 0,  # Neutral MACD
+        'MACD_signal': 0,  # Neutral signal
+        'MACD_hist': 0,  # Neutral histogram
+        'Volatility_10': 0.02,  # Default 2% volatility
+        'Volatility_20': 0.02,  # Default 2% volatility
+        'Volume_Change_Pct': 0,  # No volume change
         'Close_lag_1': prev_close,
         'Volume_lag_1': volume,
         'Year': 2024,

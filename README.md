@@ -40,12 +40,30 @@ The system processes **457,000+ historical stock records** from **66 major compa
 
 - **🎯 High-Accuracy Predictions** - Linear Regression model with R² = 1.0000
 - **📊 Multi-Model Analysis** - Supports Linear Regression and Random Forest algorithms
-- **🔧 Advanced Feature Engineering** - 16+ technical indicators (SMA, volatility, lagged features)
+- **🔧 Advanced Feature Engineering** - 24+ features including SMA, EMA, RSI, MACD, Volatility
+- **📈 Comprehensive Visualizations** - 4 professional graphs automatically generated
 - **🧹 Automated Data Cleaning** - Processes 66 stock symbols with comprehensive validation
 - **⚡ Fast Processing** - Optimized for production use with 20K sample training
 - **💾 Model Persistence** - Save/load trained models for repeated use
-- **📈 Performance Metrics** - Detailed RMSE, MAE, R² evaluation
+- **📊 Performance Metrics** - Detailed RMSE, MAE, R² evaluation with graphs
 - **🔮 Real-time Predictions** - Simple API for new stock data predictions
+- **📉 Technical Indicators Dashboard** - Visual representation of all indicators
+
+## 📊 NEW: Visualizations
+
+The system now automatically generates **4 high-quality graphs** (300 DPI):
+
+1. **Actual vs Predicted Prices** - Model accuracy visualization
+2. **Technical Indicators Dashboard** - 6-panel view (SMA, EMA, RSI, MACD, Volatility, Volume)
+3. **Model Comparison** - Bar charts comparing RMSE, MAE, R² scores
+4. **Feature Importance** - Top 15 most influential features
+
+**View your graphs:**
+```bash
+python view_graphs.py
+```
+
+All graphs are saved in `results/plots/` folder. See [VISUALIZATION_GUIDE.md](VISUALIZATION_GUIDE.md) for details.
 
 ## 🛠 Tech Stack
 
