@@ -400,14 +400,33 @@ class StockMarketAnalyzer:
             self.models['Logistic Regression'] = lr_model
             print("✅ Logistic Regression trained")
             
-            # Random Forest Classifier
-            print("🌲 Training Random Forest Classifier...")
+            # Random Forest Classifier - Final Production Model
+            print("🌲 Training Random Forest Classifier (Production Model)...")
+            print("   Hyperparameters:")
+            print("   • n_estimators: 200 (number of trees)")
+            print("   • max_depth: 15 (tree depth)")
+            print("   • min_samples_split: 10 (min samples to split)")
+            print("   • min_samples_leaf: 4 (min samples per leaf)")
+            print("   • max_features: 'sqrt' (features per split)")
+            print("   • random_state: 42 (reproducibility)")
+            print("   • n_jobs: -1 (parallel processing)")
+            
             rf_model = RandomForestClassifier(
-                n_estimators=100, max_depth=10, random_state=42, n_jobs=2
+                n_estimators=200,
+                max_depth=15,
+                min_samples_split=10,
+                min_samples_leaf=4,
+                max_features='sqrt',
+                random_state=42,
+                n_jobs=-1,
+                verbose=0
             )
             rf_model.fit(self.X_train, self.y_train)
             self.models['Random Forest'] = rf_model
-            print("✅ Random Forest Classifier trained")
+            print("✅ Random Forest Classifier trained successfully")
+            print(f"   Trees in forest: {rf_model.n_estimators}")
+            print(f"   Training samples: {len(self.X_train):,}")
+            print(f"   Features used: {self.X_train.shape[1]}")
             
         else:
             print("📊 Task: Regression (Price prediction)")
