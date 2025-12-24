@@ -1,0 +1,29 @@
+{
+  "model_name": "Gradient Boosting",
+  "algorithm": "GradientBoostingClassifier",
+  "training_date": "2025-12-24 16:09:07",
+  "performance_metrics": {
+    "train_accuracy": 100.0,
+    "test_accuracy": 36.252545824847246,
+    "overfitting_gap": 63.747454175152754,
+    "test_f1_score": 35.2385715677174
+  },
+  "training_details": {
+    "train_samples": 1960,
+    "test_samples": 491,
+    "balanced_train_samples": 2265,
+    "features": 35,
+    "classes": [
+      "BUY",
+      "HOLD",
+      "SELL"
+    ]
+  },
+  "improvements": [
+    "Advanced technical indicators (Bollinger, ATR, Stochastic, OBV, Williams R, ROC)",
+    "SMOTE for class imbalance",
+    "Optimized hyperparameters",
+    "Ensemble voting (RF + GB)",
+    "Increased estimators (500)"
+  ]
+}
