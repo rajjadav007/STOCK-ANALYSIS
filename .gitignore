@@ -70,6 +70,8 @@ results/*.pdf
 results/*.csv
 results/*.txt
 results/*.log
+results/*.html
+results/**/*.html
 
 # Logs
 *.log
