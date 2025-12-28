@@ -15,6 +15,7 @@ import warnings
 import os
 import sys
 from scipy import stats
+from datetime import datetime
 
 warnings.filterwarnings('ignore')
 
@@ -289,26 +290,31 @@ def plot_metrics_dashboard(results):
 
 
 def plot_residuals(models, scaler):
-    """Plot residual analysis using synthetic example data."""
-    print("📊 Creating residual plot example...")
+    """Plot residual analysis using actual model predictions."""
+    print("📊 Creating residual plot from actual predictions...")
     
     try:
-        # Generate synthetic example data for demonstration
-        print("   Generating synthetic data for visualization...")
-        np.random.seed(42)
-        n_samples = 500
+        # Load actual predictions from saved file
+        predictions_file = 'results/predictions.csv'
         
-        # Create realistic stock return patterns
-        y_test = np.random.normal(0, 0.02, n_samples)  # True returns ~ 0 mean, 2% std
-        
-        # Add some predictive signal with noise
-        y_pred_base = 0.6 * y_test + np.random.normal(0, 0.015, n_samples)
-        
-        # Add some systematic bias for realism
-        y_pred = y_pred_base + 0.002 * np.sin(np.linspace(0, 4*np.pi, n_samples))
-        
-        # Calculate residuals
-        residuals = y_test - y_pred
+        if not os.path.exists(predictions_file):
+            print("   ⚠️  Predictions file not found. Run model_improvement_pipeline.py first.")
+            print("   Using synthetic example data for demonstration...")
+            # Generate synthetic example data as fallback
+            np.random.seed(42)
+            n_samples = 500
+            y_test = np.random.normal(0, 0.02, n_samples)
+            y_pred = 0.6 * y_test + np.random.normal(0, 0.015, n_samples)
+            residuals = y_test - y_pred
+            is_real_data = False
+        else:
+            print("   Loading actual model predictions...")
+            pred_df = pd.read_csv(predictions_file)
+            y_test = pred_df['Actual'].values
+            y_pred = pred_df['Predicted'].values
+            residuals = pred_df['Residual'].values
+            is_real_data = True
+            print(f"   ✅ Loaded {len(y_test)} real predictions")
         
         print("   Creating visualizations...")
         
@@ -429,16 +435,34 @@ def plot_residuals(models, scaler):
                 bbox=dict(boxstyle='round', facecolor='lightblue', alpha=0.5),
                 verticalalignment='bottom', horizontalalignment='right')
         
-        # Add interpretation note
-        note_text = "NOTE: This is a synthetic example demonstrating residual analysis.\n"
-        note_text += "Your actual model residuals will differ based on real predictions."
+        # Add data source note
+        if is_real_data:
+            note_text = f"✅ Real Model Predictions | Samples: {len(y_test)} | Generated: {datetime.now().strftime('%Y-%m-%d %H:%M')}"
+            note_color = 'green'
+        else:
+            note_text = "⚠️  SYNTHETIC DATA: Run model_improvement_pipeline.py to generate real predictions"
+            note_color = 'red'
+        
         fig.text(0.5, 0.005, note_text, 
-                fontsize=9, fontstyle='italic', color='gray',
+                fontsize=9, fontweight='bold', color=note_color,
                 ha='center', va='bottom')
         
         plt.savefig('results/residual_analysis.png', dpi=300, bbox_inches='tight')
         print("✅ Saved: results/residual_analysis.png")
         plt.show()
+        
+        # Print data source info
+        if is_real_data:
+            print("\n" + "=" * 80)
+            print("✅ REAL MODEL PREDICTIONS ANALYZED")
+            print("=" * 80)
+            print(f"   Samples: {len(y_test)}")
+            print(f"   Data Source: Actual ensemble model predictions")
+        else:
+            print("\n" + "=" * 80)
+            print("⚠️  SYNTHETIC DATA USED (DEMO ONLY)")
+            print("=" * 80)
+            print("   Run 'python model_improvement_pipeline.py' to generate real predictions")
         
         # Print interpretation guide
         print("\n" + "=" * 80)

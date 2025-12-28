@@ -292,6 +292,15 @@ class FixedImprovementPipeline:
         with open('results/improvement_metrics.json', 'w') as f:
             json.dump(report, f, indent=2)
         
+        # Save predictions for residual analysis
+        predictions_df = pd.DataFrame({
+            'Actual': self.y_test,
+            'Predicted': ensemble_pred,
+            'Residual': self.y_test - ensemble_pred
+        })
+        predictions_df.to_csv('results/predictions.csv', index=False)
+        print(f"💾 Saved: results/predictions.csv")
+        
         # Save models
         os.makedirs('models', exist_ok=True)
         joblib.dump(self.models, 'models/ensemble_models.joblib')
