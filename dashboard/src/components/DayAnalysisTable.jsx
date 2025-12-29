@@ -1,12 +1,38 @@
-import React from 'react';
+import React, { useState, useMemo } from 'react';
 
 export const DayAnalysisTable = ({ data, profitByDay }) => {
+  const [timePeriod, setTimePeriod] = useState('Last 3 Month');
+
   const formatCurrency = (value) => {
     return new Intl.NumberFormat('en-IN', {
       minimumFractionDigits: 2,
       maximumFractionDigits: 2
     }).format(value);
   };
+
+  // Filter data based on time period
+  const filteredData = useMemo(() => {
+    if (!data || data.length === 0) return [];
+    
+    let rowsToShow;
+    switch (timePeriod) {
+      case 'Last 3 Month':
+        rowsToShow = Math.min(90, data.length); // ~3 months
+        break;
+      case 'Last 6 Month':
+        rowsToShow = Math.min(180, data.length); // ~6 months
+        break;
+      case 'Last Year':
+        rowsToShow = Math.min(365, data.length); // ~1 year
+        break;
+      case 'All Time':
+      default:
+        rowsToShow = data.length;
+        break;
+    }
+    
+    return data.slice(0, rowsToShow);
+  }, [data, timePeriod]);
 
   return (
     <div className="table-section">
@@ -24,11 +50,15 @@ export const DayAnalysisTable = ({ data, profitByDay }) => {
       <div className="table-header">
         <h3 className="table-title">Day Analysis</h3>
         <div className="table-controls">
-          <select className="table-dropdown">
-            <option>Last 3 Month</option>
-            <option>Last 6 Month</option>
-            <option>Last Year</option>
-            <option>All Time</option>
+          <select 
+            className="table-dropdown"
+            value={timePeriod}
+            onChange={(e) => setTimePeriod(e.target.value)}
+          >
+            <option value="Last 3 Month">Last 3 Month</option>
+            <option value="Last 6 Month">Last 6 Month</option>
+            <option value="Last Year">Last Year</option>
+            <option value="All Time">All Time</option>
           </select>
           <button className="btn-export">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -55,7 +85,7 @@ export const DayAnalysisTable = ({ data, profitByDay }) => {
             </tr>
           </thead>
           <tbody>
-            {data.map((row, index) => (
+            {filteredData.map((row, index) => (
               <tr key={index}>
                 <td>{row.date}</td>
                 <td className="align-center">{row.trades}</td>

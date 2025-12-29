@@ -1,6 +1,10 @@
-import React from 'react';
+import React, { useState, useMemo } from 'react';
 
 export const TradeAnalysisTable = ({ data, isEmpty }) => {
+  const [timePeriod, setTimePeriod] = useState('All Time');
+  const [sideFilter, setSideFilter] = useState('ALL');
+  const [resultFilter, setResultFilter] = useState('ALL');
+
   const formatCurrency = (value) => {
     return new Intl.NumberFormat('en-IN', {
       minimumFractionDigits: 2,
@@ -8,26 +12,81 @@ export const TradeAnalysisTable = ({ data, isEmpty }) => {
     }).format(value);
   };
 
+  // Filter data based on all filters
+  const filteredData = useMemo(() => {
+    if (!data || data.length === 0) return [];
+    
+    let filtered = [...data];
+    
+    // Apply side filter (Buy/Sell)
+    if (sideFilter !== 'ALL') {
+      filtered = filtered.filter(row => 
+        row.side?.toUpperCase() === sideFilter.toUpperCase()
+      );
+    }
+    
+    // Apply result filter (Profit/Loss)
+    if (resultFilter !== 'ALL') {
+      filtered = filtered.filter(row => {
+        if (resultFilter === 'Profit') return row.profitLoss > 0;
+        if (resultFilter === 'Loss') return row.profitLoss < 0;
+        return true;
+      });
+    }
+    
+    // Apply time period filter (limit number of rows)
+    let rowsToShow;
+    switch (timePeriod) {
+      case 'Last Month':
+        rowsToShow = Math.min(30, filtered.length);
+        break;
+      case 'Last 3 Months':
+        rowsToShow = Math.min(90, filtered.length);
+        break;
+      case 'Last 6 Months':
+        rowsToShow = Math.min(180, filtered.length);
+        break;
+      case 'All Time':
+      default:
+        rowsToShow = filtered.length;
+        break;
+    }
+    
+    return filtered.slice(0, rowsToShow);
+  }, [data, timePeriod, sideFilter, resultFilter]);
+
   return (
     <div className="table-section">
       <div className="table-header">
         <h3 className="table-title">Trade Analysis</h3>
         <div className="table-controls">
-          <select className="table-dropdown">
-            <option>Last Month</option>
-            <option>Last 3 Months</option>
-            <option>Last 6 Months</option>
-            <option>All Time</option>
+          <select 
+            className="table-dropdown"
+            value={timePeriod}
+            onChange={(e) => setTimePeriod(e.target.value)}
+          >
+            <option value="Last Month">Last Month</option>
+            <option value="Last 3 Months">Last 3 Months</option>
+            <option value="Last 6 Months">Last 6 Months</option>
+            <option value="All Time">All Time</option>
           </select>
-          <select className="table-dropdown">
-            <option>ALL</option>
-            <option>Buy</option>
-            <option>Sell</option>
+          <select 
+            className="table-dropdown"
+            value={sideFilter}
+            onChange={(e) => setSideFilter(e.target.value)}
+          >
+            <option value="ALL">ALL</option>
+            <option value="Buy">Buy</option>
+            <option value="Sell">Sell</option>
           </select>
-          <select className="table-dropdown">
-            <option>ALL</option>
-            <option>Profit</option>
-            <option>Loss</option>
+          <select 
+            className="table-dropdown"
+            value={resultFilter}
+            onChange={(e) => setResultFilter(e.target.value)}
+          >
+            <option value="ALL">ALL</option>
+            <option value="Profit">Profit</option>
+            <option value="Loss">Loss</option>
           </select>
           <button className="btn-export">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -64,7 +123,7 @@ export const TradeAnalysisTable = ({ data, isEmpty }) => {
               </tr>
             </thead>
             <tbody>
-              {data.map((row, index) => (
+              {filteredData.map((row, index) => (
                 <tr key={index}>
                   <td>{row.symbol}</td>
                   <td className="align-center">{row.side}</td>
@@ -90,13 +149,13 @@ export const TradeAnalysisTable = ({ data, isEmpty }) => {
                   </td>
                 </tr>
               ))}
-              {data.length > 0 && (
+              {filteredData.length > 0 && (
                 <tr style={{ fontWeight: 600, background: 'rgba(15, 20, 35, 0.8)' }}>
                   <td colSpan="2">Total</td>
-                  <td className="align-center">{data.reduce((sum, row) => sum + row.qty, 0)}</td>
+                  <td className="align-center">{filteredData.reduce((sum, row) => sum + row.qty, 0)}</td>
                   <td colSpan="4"></td>
-                  <td className={`align-right ${data.reduce((sum, row) => sum + row.profitLoss, 0) > 0 ? 'positive' : 'negative'}`}>
-                    {formatCurrency(data.reduce((sum, row) => sum + row.profitLoss, 0))}
+                  <td className={`align-right ${filteredData.reduce((sum, row) => sum + row.profitLoss, 0) > 0 ? 'positive' : 'negative'}`}>
+                    {formatCurrency(filteredData.reduce((sum, row) => sum + row.profitLoss, 0))}
                   </td>
                   <td></td>
                 </tr>

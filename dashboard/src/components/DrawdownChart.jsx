@@ -1,7 +1,24 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 
 export const DrawdownChart = ({ data, drawdownInfo, timeFilter, onTimeFilterChange }) => {
+  // Filter data based on time period
+  const filteredData = useMemo(() => {
+    if (!data || data.length === 0) return [];
+    if (timeFilter === 'All') return data;
+
+    // Map time filter to approximate number of data points
+    const pointsMap = {
+      '1M': Math.ceil(data.length / 2),   // ~30 days
+      '3M': Math.ceil(data.length * 0.75), // ~90 days
+      '6M': Math.ceil(data.length * 0.85), // ~180 days  
+      '1Y': data.length                     // Full year
+    };
+
+    const pointsToShow = pointsMap[timeFilter] || data.length;
+    return data.slice(-pointsToShow);
+  }, [data, timeFilter]);
+
   const CustomTooltip = ({ active, payload }) => {
     if (active && payload && payload.length) {
       return (
@@ -74,7 +91,7 @@ export const DrawdownChart = ({ data, drawdownInfo, timeFilter, onTimeFilterChan
         </div>
         <div className="chart-container">
           <ResponsiveContainer width="100%" height="100%">
-            <AreaChart data={data} margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
+            <AreaChart data={filteredData} margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
               <defs>
                 <linearGradient id="colorDrawdown" x1="0" y1="0" x2="0" y2="1">
                   <stop offset="5%" stopColor="#f87171" stopOpacity={0.3}/>

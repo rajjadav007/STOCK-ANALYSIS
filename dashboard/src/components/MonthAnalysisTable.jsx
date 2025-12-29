@@ -1,6 +1,8 @@
-import React from 'react';
+import React, { useState, useMemo } from 'react';
 
 export const MonthAnalysisTable = ({ data }) => {
+  const [selectedYear, setSelectedYear] = useState('All Years');
+
   const formatCurrency = (value) => {
     return new Intl.NumberFormat('en-IN', {
       minimumFractionDigits: 2,
@@ -12,15 +14,40 @@ export const MonthAnalysisTable = ({ data }) => {
     return `${value.toFixed(2)}%`;
   };
 
+  // Get available years from data
+  const availableYears = useMemo(() => {
+    if (!data || data.length === 0) return ['All Years'];
+    const years = [...new Set(data
+      .filter(row => row.month !== 'Total')
+      .map(row => row.month.split(' - ')[1])
+      .filter(Boolean)
+    )];
+    return ['All Years', ...years.sort().reverse()];
+  }, [data]);
+
+  // Filter data based on selected year
+  const filteredData = useMemo(() => {
+    if (!data || data.length === 0) return [];
+    if (selectedYear === 'All Years') return data;
+    
+    return data.filter(row => 
+      row.month === 'Total' || row.month.includes(selectedYear)
+    );
+  }, [data, selectedYear]);
+
   return (
     <div className="table-section">
       <div className="table-header">
         <h3 className="table-title">Month Analysis</h3>
         <div className="table-controls">
-          <select className="table-dropdown">
-            <option>2025</option>
-            <option>2024</option>
-            <option>2023</option>
+          <select 
+            className="table-dropdown"
+            value={selectedYear}
+            onChange={(e) => setSelectedYear(e.target.value)}
+          >
+            {availableYears.map(year => (
+              <option key={year} value={year}>{year}</option>
+            ))}
           </select>
           <button className="btn-export">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -48,7 +75,7 @@ export const MonthAnalysisTable = ({ data }) => {
             </tr>
           </thead>
           <tbody>
-            {data.map((row, index) => (
+            {filteredData.map((row, index) => (
               <tr key={index}>
                 <td>{row.month}</td>
                 <td className="align-center">{row.trades}</td>
