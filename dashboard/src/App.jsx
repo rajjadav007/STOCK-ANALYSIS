@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Header from './components/Header';
 import MetricsGrid from './components/MetricsGrid';
 import TabNavigation from './components/TabNavigation';
@@ -12,6 +12,7 @@ import YearAnalysisTable from './components/YearAnalysisTable';
 import TradeStats from './components/TradeStats';
 import TradeAnalysisTable from './components/TradeAnalysisTable';
 import DrawdownChart from './components/DrawdownChart';
+import dataService from './services/dataService';
 import './styles/Dashboard.css';
 
 // Sample data - replace with your ML model outputs
@@ -165,6 +166,45 @@ const sampleData = {
 function App() {
   const [activeTab, setActiveTab] = useState('summary');
   const [timeFilter, setTimeFilter] = useState('All');
+  const [stockList, setStockList] = useState(['RELIANCE']);
+  const [selectedStock, setSelectedStock] = useState('RELIANCE');
+  const [dashboardData, setDashboardData] = useState(null);
+  const [loading, setLoading] = useState(true);
+
+  // Load stock list on mount
+  useEffect(() => {
+    const loadStocks = async () => {
+      const stocks = await dataService.getStockList();
+      setStockList(stocks);
+      if (stocks.length > 0) {
+        setSelectedStock(stocks[0]);
+      }
+    };
+    loadStocks();
+  }, []);
+
+  // Load data when stock changes
+  useEffect(() => {
+    const loadData = async () => {
+      setLoading(true);
+      try {
+        const data = await dataService.getStockData(selectedStock);
+        setDashboardData(data);
+      } catch (error) {
+        console.error('Error loading stock data:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    if (selectedStock) {
+      loadData();
+    }
+  }, [selectedStock]);
+
+  const handleStockChange = (stock) => {
+    setSelectedStock(stock);
+  };
 
   const tabs = [
     { id: 'summary', label: 'Summary' },
@@ -177,12 +217,21 @@ function App() {
   ];
 
   const renderTabContent = () => {
+    if (loading || !dashboardData) {
+      return (
+        <div style={{ padding: '80px 20px', textAlign: 'center', color: '#9ca3af' }}>
+          <div style={{ fontSize: '18px', marginBottom: '12px' }}>Loading {selectedStock} data...</div>
+          <div style={{ fontSize: '14px', color: '#6b7280' }}>Fetching ML predictions and backtest results</div>
+        </div>
+      );
+    }
+
     switch (activeTab) {
       case 'summary':
         return (
           <>
             <PerformanceChart 
-              data={sampleData.performanceData}
+              data={dashboardData.performanceData}
               timeFilter={timeFilter}
               onTimeFilterChange={setTimeFilter}
             />
@@ -203,42 +252,42 @@ function App() {
       case 'day':
         return (
           <>
-            <DayStats stats={sampleData.dayAnalysis.stats} />
+            <DayStats stats={dashboardData.dayAnalysis.stats} />
             <DayAnalysisTable 
-              data={sampleData.dayAnalysis.tableData}
-              profitByDay={sampleData.dayAnalysis.profitByDay}
+              data={dashboardData.dayAnalysis.tableData}
+              profitByDay={dashboardData.dayAnalysis.profitByDay}
             />
           </>
         );
       case 'month':
         return (
           <>
-            <MonthStats stats={sampleData.monthAnalysis.stats} />
-            <MonthAnalysisTable data={sampleData.monthAnalysis.tableData} />
+            <MonthStats stats={dashboardData.monthAnalysis.stats} />
+            <MonthAnalysisTable data={dashboardData.monthAnalysis.tableData} />
           </>
         );
       case 'year':
         return (
           <>
-            <YearStats stats={sampleData.yearAnalysis.stats} />
-            <YearAnalysisTable data={sampleData.yearAnalysis.tableData} />
+            <YearStats stats={dashboardData.yearAnalysis.stats} />
+            <YearAnalysisTable data={dashboardData.yearAnalysis.tableData} />
           </>
         );
       case 'trade':
         return (
           <>
-            <TradeStats stats={sampleData.tradeAnalysis.stats} />
+            <TradeStats stats={dashboardData.tradeAnalysis.stats} />
             <TradeAnalysisTable 
-              data={sampleData.tradeAnalysis.tableData}
-              isEmpty={sampleData.tradeAnalysis.isEmpty}
+              data={dashboardData.tradeAnalysis.tableData}
+              isEmpty={dashboardData.tradeAnalysis.isEmpty}
             />
           </>
         );
       case 'drawdown':
         return (
           <DrawdownChart 
-            data={sampleData.drawdownAnalysis.chartData}
-            drawdownInfo={sampleData.drawdownAnalysis.drawdownInfo}
+            data={dashboardData.drawdownAnalysis.chartData}
+            drawdownInfo={dashboardData.drawdownAnalysis.drawdownInfo}
             timeFilter={timeFilter}
             onTimeFilterChange={setTimeFilter}
           />
@@ -254,18 +303,21 @@ function App() {
     <div className="dashboard-container">
       <div className="dashboard-card">
         <Header 
-          strategyName={sampleData.strategy.name}
-          backtested={sampleData.strategy.backtested}
-          period={sampleData.strategy.period}
-          created={sampleData.strategy.created}
+          strategyName={dashboardData?.strategy.name || 'ML Trading Strategy'}
+          backtested={dashboardData?.strategy.backtested || 'Loading...'}
+          period={dashboardData?.strategy.period || 'Loading...'}
+          created={dashboardData?.strategy.created || 'Today'}
+          stocks={stockList}
+          selectedStock={selectedStock}
+          onStockChange={handleStockChange}
         />
         <TabNavigation 
           tabs={tabs}
           activeTab={activeTab}
           onTabChange={setActiveTab}
         />
-        {activeTab === 'summary' && (
-          <MetricsGrid metrics={sampleData.summary.metrics} />
+        {activeTab === 'summary' && dashboardData && (
+          <MetricsGrid metrics={dashboardData.summary.metrics} />
         )}
         <div className="dashboard-content">
           {renderTabContent()}

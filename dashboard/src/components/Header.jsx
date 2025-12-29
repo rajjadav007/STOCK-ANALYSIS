@@ -1,6 +1,6 @@
 import React from 'react';
 
-export const Header = ({ strategyName, backtested, period, created }) => {
+export const Header = ({ strategyName, backtested, period, created, stocks, selectedStock, onStockChange }) => {
   return (
     <div className="dashboard-header">
       <div>
@@ -21,6 +21,15 @@ export const Header = ({ strategyName, backtested, period, created }) => {
         </div>
       </div>
       <div className="header-actions">
+        <select 
+          className="stock-selector"
+          value={selectedStock}
+          onChange={(e) => onStockChange(e.target.value)}
+        >
+          {stocks.map(stock => (
+            <option key={stock} value={stock}>{stock}</option>
+          ))}
+        </select>
         <button className="btn-icon" title="Download">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
             <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/>
