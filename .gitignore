@@ -164,3 +164,14 @@ dmypy.json
 
 # Cython debug symbols
 cython_debug/
+
+# Node.js / Dashboard
+node_modules/
+dashboard/node_modules/
+dashboard/build/
+dashboard/.npm
+dashboard/.eslintcache
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+package-lock.json
