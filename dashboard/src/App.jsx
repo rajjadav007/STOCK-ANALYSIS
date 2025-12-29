@@ -7,6 +7,11 @@ import DayStats from './components/DayStats';
 import DayAnalysisTable from './components/DayAnalysisTable';
 import MonthStats from './components/MonthStats';
 import MonthAnalysisTable from './components/MonthAnalysisTable';
+import YearStats from './components/YearStats';
+import YearAnalysisTable from './components/YearAnalysisTable';
+import TradeStats from './components/TradeStats';
+import TradeAnalysisTable from './components/TradeAnalysisTable';
+import DrawdownChart from './components/DrawdownChart';
 import './styles/Dashboard.css';
 
 // Sample data - replace with your ML model outputs
@@ -97,6 +102,63 @@ const sampleData = {
       { month: "May - 2025", trades: 6, targets: 0, stopLoss: 6, cover: 0, buyTrades: 6, sellTrades: 0, qty: 450, roi: 9.1, profitLoss: 5032.50 },
       { month: "Total", trades: 39, targets: 0, stopLoss: 36, cover: 3, buyTrades: 39, sellTrades: 0, qty: 2925, roi: 0, profitLoss: 15140.00 }
     ]
+  },
+  yearAnalysis: {
+    stats: [
+      { label: "Total Years", value: 1, type: "number" },
+      { label: "Positive Years", value: "1 (100%)", type: "text", className: "positive" },
+      { label: "Negative Years", value: "0 (0%)", type: "text", className: "negative" },
+      { label: "Year Average Profit", value: 15140.00, type: "currency" },
+      { label: "Year ROI", value: 384.39, type: "percentage" },
+      { label: "Year Max Profit", value: 15140.00, type: "currency", className: "positive" },
+      { label: "Year Max Loss", value: 15140.00, type: "currency", className: "negative" },
+      { label: "Year Min Profit", value: 15140.00, type: "currency" },
+      { label: "Year Average Trades", value: 39, type: "number" }
+    ],
+    tableData: [
+      { year: "2025", trades: 39, targets: 0, stopLoss: 36, cover: 3, buyTrades: 39, sellTrades: 0, qty: 2925, roi: 27.38, profitLoss: 15140.00 },
+      { year: "Total", trades: 39, targets: 0, stopLoss: 36, cover: 3, buyTrades: 39, sellTrades: 0, qty: 2925, roi: 0, profitLoss: 15140.00 }
+    ]
+  },
+  tradeAnalysis: {
+    stats: [
+      { label: "Total Trades", value: 39, type: "number" },
+      { label: "Positive Trades", value: "23 (58.97%)", type: "text", className: "positive" },
+      { label: "Negative Trades", value: "16 (41.03%)", type: "text", className: "negative" },
+      { label: "Cover Trades", value: "39 (100%)", type: "text" },
+      { label: "Target Trades", value: "0 (0%)", type: "text" },
+      { label: "Stop Loss Trades", value: "0 (0%)", type: "text" },
+      { label: "Consecutive Target Trades", value: 0, type: "number" },
+      { label: "Consecutive Stop Loss Trades", value: 3, type: "number" },
+      { label: "No of Master Target", value: 0, type: "number" },
+      { label: "No of Master SL", value: 6, type: "number" },
+      { label: "BUY Trades", value: 39, type: "number" },
+      { label: "SELL Trades", value: 0, type: "number" }
+    ],
+    tableData: [],
+    isEmpty: true
+  },
+  drawdownAnalysis: {
+    drawdownInfo: {
+      drawdown: "5293.75 (9.57%)",
+      downStartDate: "09-06-2025",
+      maxDownDate: "10-06-2025",
+      recoveryDate: "10-06-2025",
+      recoveryPeriod: "1 Day(s)"
+    },
+    chartData: [
+      { date: "May 30", drawdown: 0 },
+      { date: "Jun 2", drawdown: 0 },
+      { date: "Jun 3", drawdown: 0 },
+      { date: "Jun 4", drawdown: 0 },
+      { date: "Jun 9", drawdown: 0 },
+      { date: "Jun 10", drawdown: -7.22 },
+      { date: "Jun 12", drawdown: -2.68 },
+      { date: "Jun 17", drawdown: 0 },
+      { date: "Jun 18", drawdown: -0.35 },
+      { date: "Jun 23", drawdown: 0 },
+      { date: "Jun 24", drawdown: -3.17 }
+    ]
   }
 };
 
@@ -156,11 +218,31 @@ function App() {
           </>
         );
       case 'year':
-        return <div style={{ padding: '40px', textAlign: 'center', color: '#9ca3af' }}>Year Analysis - Coming Soon</div>;
+        return (
+          <>
+            <YearStats stats={sampleData.yearAnalysis.stats} />
+            <YearAnalysisTable data={sampleData.yearAnalysis.tableData} />
+          </>
+        );
       case 'trade':
-        return <div style={{ padding: '40px', textAlign: 'center', color: '#9ca3af' }}>Trade Analysis - Coming Soon</div>;
+        return (
+          <>
+            <TradeStats stats={sampleData.tradeAnalysis.stats} />
+            <TradeAnalysisTable 
+              data={sampleData.tradeAnalysis.tableData}
+              isEmpty={sampleData.tradeAnalysis.isEmpty}
+            />
+          </>
+        );
       case 'drawdown':
-        return <div style={{ padding: '40px', textAlign: 'center', color: '#9ca3af' }}>Drawdown Analysis - Coming Soon</div>;
+        return (
+          <DrawdownChart 
+            data={sampleData.drawdownAnalysis.chartData}
+            drawdownInfo={sampleData.drawdownAnalysis.drawdownInfo}
+            timeFilter={timeFilter}
+            onTimeFilterChange={setTimeFilter}
+          />
+        );
       case 'parameters':
         return <div style={{ padding: '40px', textAlign: 'center', color: '#9ca3af' }}>Parameters - Coming Soon</div>;
       default:
