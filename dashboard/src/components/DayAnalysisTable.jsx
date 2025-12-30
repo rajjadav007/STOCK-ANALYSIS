@@ -17,13 +17,13 @@ export const DayAnalysisTable = ({ data, profitByDay }) => {
     let rowsToShow;
     switch (timePeriod) {
       case 'Last 3 Month':
-        rowsToShow = Math.min(90, data.length); // ~3 months
+        rowsToShow = Math.min(66, data.length); // ~66 trading days in 3 months
         break;
       case 'Last 6 Month':
-        rowsToShow = Math.min(180, data.length); // ~6 months
+        rowsToShow = Math.min(132, data.length); // ~132 trading days in 6 months
         break;
       case 'Last Year':
-        rowsToShow = Math.min(365, data.length); // ~1 year
+        rowsToShow = Math.min(252, data.length); // ~252 trading days in 1 year
         break;
       case 'All Time':
       default:

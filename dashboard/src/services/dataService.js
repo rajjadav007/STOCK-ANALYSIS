@@ -3,12 +3,23 @@ import Papa from 'papaparse';
 class DataService {
   constructor() {
     this.cache = {};
+    this.apiUrl = 'http://localhost:5000/api';
   }
 
-  // Get list of available stocks
+  // Get list of available stocks from Flask API
   async getStockList() {
-    // Return stock list directly without API call
-    return this.getDefaultStockList();
+    try {
+      const response = await fetch(`${this.apiUrl}/stocks`);
+      if (!response.ok) {
+        console.warn('API not available, using default stock list');
+        return this.getDefaultStockList();
+      }
+      const data = await response.json();
+      return data.stocks && data.stocks.length > 0 ? data.stocks : this.getDefaultStockList();
+    } catch (error) {
+      console.warn('Error fetching stock list from API:', error);
+      return this.getDefaultStockList();
+    }
   }
 
   getDefaultStockList() {
@@ -25,22 +36,108 @@ class DataService {
     ];
   }
 
-  // Load stock predictions and backtest results
+  // Load stock predictions and backtest results from Flask API
   async getStockData(stockSymbol) {
     // Check cache first
     if (this.cache[stockSymbol]) {
+      console.log(`Loading ${stockSymbol} from cache`);
       return this.cache[stockSymbol];
     }
 
     try {
-      // Generate sample data immediately
-      const data = this.generateSampleData(stockSymbol);
-      this.cache[stockSymbol] = data;
-      return data;
+      console.log(`Fetching real data for ${stockSymbol} from Flask API...`);
+      const response = await fetch(`${this.apiUrl}/stock/${stockSymbol}`);
+      
+      if (!response.ok) {
+        throw new Error(`API returned ${response.status}: ${response.statusText}`);
+      }
+      
+      const data = await response.json();
+      
+      if (data.error) {
+        throw new Error(data.error);
+      }
+      
+      // Enhance data with additional calculations if needed
+      const enhancedData = this.enhanceApiData(data, stockSymbol);
+      
+      // Cache the result
+      this.cache[stockSymbol] = enhancedData;
+      console.log(`Successfully loaded real data for ${stockSymbol}`);
+      
+      return enhancedData;
     } catch (error) {
-      console.error(`Error loading data for ${stockSymbol}:`, error);
-      return this.generateSampleData(stockSymbol);
+      console.error(`Error loading real data for ${stockSymbol}:`, error);
+      console.log(`Falling back to generated sample data for ${stockSymbol}`);
+      
+      // Fallback to sample data if API fails
+      const fallbackData = this.generateSampleData(stockSymbol);
+      return fallbackData;
     }
+  }
+
+  // Enhance API data with additional calculations
+  enhanceApiData(apiData, stockSymbol) {
+    // Calculate day analysis if missing
+    if (!apiData.dayAnalysis || !apiData.dayAnalysis.stats) {
+      apiData.dayAnalysis = this.calculateDayAnalysisFromData(apiData);
+    }
+    
+    // Calculate month analysis if missing
+    if (!apiData.monthAnalysis || !apiData.monthAnalysis.stats) {
+      apiData.monthAnalysis = this.calculateMonthAnalysisFromData(apiData);
+    }
+    
+    // Calculate year analysis if missing
+    if (!apiData.yearAnalysis || !apiData.yearAnalysis.stats) {
+      apiData.yearAnalysis = this.calculateYearAnalysisFromData(apiData);
+    }
+    
+    return apiData;
+  }
+
+  // Calculate analyses from API data
+  calculateDayAnalysisFromData(apiData) {
+    const trades = this.extractTradesFromPerformance(apiData.performanceData);
+    return this.calculateDayAnalysis(trades);
+  }
+
+  calculateMonthAnalysisFromData(apiData) {
+    const summary = apiData.summary?.metrics || [];
+    const totalPnL = summary.find(m => m.label === 'Profit/Loss')?.value || 0;
+    const totalTrades = summary.find(m => m.label === 'Total Trades')?.value || 0;
+    const trades = this.extractTradesFromPerformance(apiData.performanceData);
+    return this.calculateMonthAnalysis(trades, totalPnL);
+  }
+
+  calculateYearAnalysisFromData(apiData) {
+    const summary = apiData.summary?.metrics || [];
+    const totalPnL = summary.find(m => m.label === 'Profit/Loss')?.value || 0;
+    const totalTrades = summary.find(m => m.label === 'Total Trades')?.value || 0;
+    const roi = summary.find(m => m.label === 'ROI')?.value || 0;
+    const trades = this.extractTradesFromPerformance(apiData.performanceData);
+    return this.calculateYearAnalysis(trades, totalTrades, roi, totalPnL);
+  }
+
+  // Extract trade info from performance data
+  extractTradesFromPerformance(performanceData) {
+    if (!performanceData || performanceData.length < 2) return [];
+    
+    const trades = [];
+    for (let i = 1; i < performanceData.length; i++) {
+      const prev = performanceData[i - 1];
+      const curr = performanceData[i];
+      const pnl = curr.equity - prev.equity;
+      
+      if (Math.abs(pnl) > 10) { // Only significant moves
+        trades.push({
+          date: new Date(),
+          pnl: pnl,
+          qty: 75
+        });
+      }
+    }
+    return trades;
   }
 
   // Generate realistic sample data

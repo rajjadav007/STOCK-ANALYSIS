@@ -2,20 +2,30 @@ import React, { useMemo } from 'react';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 
 export const DrawdownChart = ({ data, drawdownInfo, timeFilter, onTimeFilterChange }) => {
-  // Filter data based on time period
+  // Filter data based on time period - using actual data point counts
   const filteredData = useMemo(() => {
     if (!data || data.length === 0) return [];
     if (timeFilter === 'All') return data;
 
-    // Map time filter to approximate number of data points
-    const pointsMap = {
-      '1M': Math.ceil(data.length / 2),   // ~30 days
-      '3M': Math.ceil(data.length * 0.75), // ~90 days
-      '6M': Math.ceil(data.length * 0.85), // ~180 days  
-      '1Y': data.length                     // Full year
-    };
+    // Calculate exact number of data points to show based on trading days
+    let pointsToShow;
+    switch (timeFilter) {
+      case '1M':
+        pointsToShow = Math.min(22, data.length); // ~22 trading days in a month
+        break;
+      case '3M':
+        pointsToShow = Math.min(66, data.length); // ~66 trading days in 3 months
+        break;
+      case '6M':
+        pointsToShow = Math.min(132, data.length); // ~132 trading days in 6 months
+        break;
+      case '1Y':
+        pointsToShow = Math.min(252, data.length); // ~252 trading days in a year
+        break;
+      default:
+        pointsToShow = data.length;
+    }
 
-    const pointsToShow = pointsMap[timeFilter] || data.length;
     return data.slice(-pointsToShow);
   }, [data, timeFilter]);
 

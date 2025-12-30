@@ -2,41 +2,31 @@ import React, { useMemo } from 'react';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 
 export const PerformanceChart = ({ data, timeFilter, onTimeFilterChange }) => {
-  // Filter data based on time period
+  // Filter data based on time period - using actual data point counts
   const filteredData = useMemo(() => {
     if (!data || data.length === 0) return [];
     if (timeFilter === 'All') return data;
 
-    const now = new Date();
-    let cutoffDate = new Date();
-
+    // Calculate exact number of data points to show based on trading days
+    let pointsToShow;
     switch (timeFilter) {
       case '1M':
-        cutoffDate.setMonth(now.getMonth() - 1);
+        pointsToShow = Math.min(22, data.length); // ~22 trading days in a month
         break;
       case '3M':
-        cutoffDate.setMonth(now.getMonth() - 3);
+        pointsToShow = Math.min(66, data.length); // ~66 trading days in 3 months (22*3)
         break;
       case '6M':
-        cutoffDate.setMonth(now.getMonth() - 6);
+        pointsToShow = Math.min(132, data.length); // ~132 trading days in 6 months (22*6)
         break;
       case '1Y':
-        cutoffDate.setFullYear(now.getFullYear() - 1);
+        pointsToShow = Math.min(252, data.length); // ~252 trading days in a year
         break;
       default:
-        return data;
+        pointsToShow = data.length;
     }
 
-    // Filter data to only include points after cutoff date
-    // For now, we'll return the last N data points based on approximate time
-    const pointsMap = {
-      '1M': Math.ceil(data.length / 2),   // ~30 days
-      '3M': Math.ceil(data.length * 0.75), // ~90 days
-      '6M': Math.ceil(data.length * 0.85), // ~180 days  
-      '1Y': data.length                     // Full year
-    };
-
-    const pointsToShow = pointsMap[timeFilter] || data.length;
+    // Return the last N data points
     return data.slice(-pointsToShow);
   }, [data, timeFilter]);
 
