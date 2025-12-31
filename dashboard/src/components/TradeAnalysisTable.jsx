@@ -34,7 +34,7 @@ export const TradeAnalysisTable = ({ data, isEmpty }) => {
       });
     }
     
-    // Apply time period filter (limit number of rows)
+    // Apply time period filter (limit number of rows) - SLICE FROM END (most recent)
     let rowsToShow;
     switch (timePeriod) {
       case 'Last Month':
@@ -52,7 +52,8 @@ export const TradeAnalysisTable = ({ data, isEmpty }) => {
         break;
     }
     
-    return filtered.slice(0, rowsToShow);
+    // Take LAST N rows (most recent trades)
+    return filtered.slice(-rowsToShow);
   }, [data, timePeriod, sideFilter, resultFilter]);
 
   return (

@@ -25,18 +25,96 @@ export const MonthAnalysisTable = ({ data }) => {
     return ['All Years', ...years.sort().reverse()];
   }, [data]);
 
-  // Filter data based on selected year
-  const filteredData = useMemo(() => {
-    if (!data || data.length === 0) return [];
-    if (selectedYear === 'All Years') return data;
+  // Filter data based on selected year and recalculate stats
+  const { filteredData, filteredStats } = useMemo(() => {
+    if (!data || data.length === 0) return { filteredData: [], filteredStats: null };
     
-    return data.filter(row => 
-      row.month === 'Total' || row.month.includes(selectedYear)
-    );
+    // Separate total row from data rows
+    const totalRow = data.find(row => row.month === 'Total');
+    const dataRows = data.filter(row => row.month !== 'Total');
+    
+    // Filter by year
+    let filtered = selectedYear === 'All Years' 
+      ? dataRows 
+      : dataRows.filter(row => row.month.includes(selectedYear));
+    
+    // Recalculate totals from filtered data
+    if (filtered.length > 0) {
+      const newTotal = {
+        month: 'Total',
+        trades: filtered.reduce((sum, row) => sum + row.trades, 0),
+        targets: filtered.reduce((sum, row) => sum + row.targets, 0),
+        stopLoss: filtered.reduce((sum, row) => sum + row.stopLoss, 0),
+        cover: filtered.reduce((sum, row) => sum + row.cover, 0),
+        buyTrades: filtered.reduce((sum, row) => sum + row.buyTrades, 0),
+        sellTrades: filtered.reduce((sum, row) => sum + row.sellTrades, 0),
+        qty: filtered.reduce((sum, row) => sum + row.qty, 0),
+        roi: 0,
+        profitLoss: filtered.reduce((sum, row) => sum + row.profitLoss, 0)
+      };
+      filtered = [...filtered, newTotal];
+    }
+    
+    // Calculate stats from filtered data (excluding total row)
+    const statsData = filtered.filter(row => row.month !== 'Total');
+    const positiveMonths = statsData.filter(row => row.profitLoss > 0).length;
+    const negativeMonths = statsData.filter(row => row.profitLoss < 0).length;
+    const totalMonths = statsData.length;
+    const avgProfit = totalMonths > 0 ? statsData.reduce((sum, row) => sum + row.profitLoss, 0) / totalMonths : 0;
+    const avgRoi = totalMonths > 0 ? statsData.reduce((sum, row) => sum + row.roi, 0) / totalMonths : 0;
+    const maxProfit = totalMonths > 0 ? Math.max(...statsData.map(row => row.profitLoss)) : 0;
+    const avgTrades = totalMonths > 0 ? Math.round(statsData.reduce((sum, row) => sum + row.trades, 0) / totalMonths) : 0;
+    
+    const stats = {
+      totalMonths,
+      positiveMonths,
+      positivePct: totalMonths > 0 ? (positiveMonths / totalMonths * 100).toFixed(0) : 0,
+      negativeMonths,
+      negativePct: totalMonths > 0 ? (negativeMonths / totalMonths * 100).toFixed(0) : 0,
+      avgProfit,
+      avgRoi,
+      maxProfit,
+      avgTrades
+    };
+    
+    return { filteredData: filtered, filteredStats: stats };
   }, [data, selectedYear]);
 
   return (
     <div className="table-section">
+      {filteredStats && (
+        <div className="stats-grid" style={{ marginBottom: '20px' }}>
+          <div className="stat-card">
+            <div className="stat-label">Total Months</div>
+            <div className="stat-value">{filteredStats.totalMonths}</div>
+          </div>
+          <div className="stat-card">
+            <div className="stat-label">Positive Months</div>
+            <div className="stat-value positive">{filteredStats.positiveMonths} ({filteredStats.positivePct}%)</div>
+          </div>
+          <div className="stat-card">
+            <div className="stat-label">Negative Months</div>
+            <div className="stat-value negative">{filteredStats.negativeMonths} ({filteredStats.negativePct}%)</div>
+          </div>
+          <div className="stat-card">
+            <div className="stat-label">Month Average Profit</div>
+            <div className="stat-value">{formatCurrency(filteredStats.avgProfit)}</div>
+          </div>
+          <div className="stat-card">
+            <div className="stat-label">Month ROI</div>
+            <div className="stat-value">{formatPercentage(filteredStats.avgRoi)}</div>
+          </div>
+          <div className="stat-card">
+            <div className="stat-label">Month Max Profit</div>
+            <div className="stat-value positive">{formatCurrency(filteredStats.maxProfit)}</div>
+          </div>
+          <div className="stat-card">
+            <div className="stat-label">Month Average Trades</div>
+            <div className="stat-value">{filteredStats.avgTrades}</div>
+          </div>
+        </div>
+      )}
+
       <div className="table-header">
         <h3 className="table-title">Month Analysis</h3>
         <div className="table-controls">

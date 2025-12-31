@@ -76,6 +76,30 @@ class DataService {
     }
   }
 
+  // Load candlestick chart data with ML annotations
+  async getCandlestickData(stockSymbol) {
+    try {
+      console.log(`Fetching candlestick data for ${stockSymbol}...`);
+      const response = await fetch(`${this.apiUrl}/candlestick/${stockSymbol}`);
+      
+      if (!response.ok) {
+        throw new Error(`API returned ${response.status}: ${response.statusText}`);
+      }
+      
+      const data = await response.json();
+      
+      if (data.error) {
+        throw new Error(data.error);
+      }
+      
+      console.log(`Successfully loaded candlestick data for ${stockSymbol}`);
+      return data;
+    } catch (error) {
+      console.error(`Error loading candlestick data for ${stockSymbol}:`, error);
+      return null;
+    }
+  }
+
   // Enhance API data with additional calculations
   enhanceApiData(apiData, stockSymbol) {
     // Calculate day analysis if missing

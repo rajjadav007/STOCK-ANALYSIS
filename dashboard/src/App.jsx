@@ -3,6 +3,7 @@ import Header from './components/Header';
 import MetricsGrid from './components/MetricsGrid';
 import TabNavigation from './components/TabNavigation';
 import PerformanceChart from './components/PerformanceChart';
+import CandlestickChart from './components/CandlestickChart';
 import DayStats from './components/DayStats';
 import DayAnalysisTable from './components/DayAnalysisTable';
 import MonthStats from './components/MonthStats';
@@ -169,6 +170,7 @@ function App() {
   const [stockList, setStockList] = useState(['RELIANCE']);
   const [selectedStock, setSelectedStock] = useState('RELIANCE');
   const [dashboardData, setDashboardData] = useState(null);
+  const [candlestickData, setCandlestickData] = useState(null);
   const [loading, setLoading] = useState(true);
 
   // Load stock list on mount
@@ -190,6 +192,10 @@ function App() {
       try {
         const data = await dataService.getStockData(selectedStock);
         setDashboardData(data);
+        
+        // Load candlestick data
+        const candleData = await dataService.getCandlestickData(selectedStock);
+        setCandlestickData(candleData);
       } catch (error) {
         console.error('Error loading stock data:', error);
       } finally {
@@ -208,6 +214,7 @@ function App() {
 
   const tabs = [
     { id: 'summary', label: 'Summary' },
+    { id: 'chart', label: 'ML Chart' },
     { id: 'day', label: 'Day Analysis' },
     { id: 'month', label: 'Month Analysis' },
     { id: 'year', label: 'Year Analysis' },
@@ -247,6 +254,21 @@ function App() {
                 leading them to differ from simulated outcomes.
               </div>
             </div>
+          </>
+        );
+      case 'chart':
+        return (
+          <>
+            {candlestickData ? (
+              <CandlestickChart 
+                data={candlestickData.candles}
+                annotations={candlestickData.annotations}
+              />
+            ) : (
+              <div style={{ padding: '80px 20px', textAlign: 'center', color: '#9ca3af' }}>
+                <div style={{ fontSize: '18px', marginBottom: '12px' }}>Loading chart data...</div>
+              </div>
+            )}
           </>
         );
       case 'day':
