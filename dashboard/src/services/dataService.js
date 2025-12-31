@@ -143,7 +143,7 @@ class DataService {
   // Generate realistic sample data
   generateSampleData(stockSymbol) {
     const today = new Date();
-    const daysBack = 60;
+    const daysBack = 365;  // Generate 1 year of sample data
     const initialCapital = 50000;
     const basePrice = this.getBasePrice(stockSymbol);
     
@@ -300,7 +300,7 @@ class DataService {
         "Sat Profit": 0,
         "Sun Profit": 0
       },
-      tableData: dailyStats.slice(-30)
+      tableData: dailyStats
     };
   }
 
@@ -403,6 +403,26 @@ class DataService {
     const negativeT = trades.filter(t => t.pnl < 0).length;
     const total = trades.length;
 
+    // Generate table data from trades
+    const tableData = trades.map((trade, index) => {
+      const entryPrice = trade.entryPrice || 1000 + Math.random() * 200;
+      const exitPrice = trade.exitPrice || entryPrice + (trade.pnl / trade.qty);
+      const side = trade.side || (trade.pnl > 0 ? 'Buy' : 'Buy');
+      
+      return {
+        symbol: trade.symbol || 'INFY',
+        side: side,
+        qty: trade.qty || 75,
+        entry: trade.entryDate || new Date(Date.now() - (total - index) * 24 * 60 * 60 * 1000).toLocaleDateString('en-GB').replace(/\//g, '-'),
+        entryPrice: entryPrice.toFixed(2),
+        exitPrice: exitPrice.toFixed(2),
+        exit: trade.exitDate || new Date(Date.now() - (total - index - 1) * 24 * 60 * 60 * 1000).toLocaleDateString('en-GB').replace(/\//g, '-'),
+        profitLoss: trade.pnl.toFixed(2),
+        pnlPercent: ((trade.pnl / (entryPrice * trade.qty)) * 100).toFixed(2),
+        exitReason: trade.pnl > 0 ? 'Target' : 'Stop Loss'
+      };
+    });
+
     return {
       stats: [
         { label: "Total Trades", value: total, type: "number" },
@@ -414,8 +434,8 @@ class DataService {
         { label: "BUY Trades", value: total, type: "number" },
         { label: "SELL Trades", value: 0, type: "number" }
       ],
-      tableData: [],
-      isEmpty: true
+      tableData: tableData,
+      isEmpty: tableData.length === 0
     };
   }
 }

@@ -88,9 +88,8 @@ def format_strategy_data(stock_symbol, df):
         roi = (total_pnl / initial_capital) * 100
         max_drawdown = df['drawdown'].min()
         
-        # Return ALL data for frontend filtering (last 1 year minimum for proper time filters)
-        # Keep last 365 trading days (~1.5 years) to allow proper 1Y, 6M, 3M, 1M filtering
-        chart_df = df.tail(min(400, len(df)))  # Get up to 400 days (> 1 year) for all time filters
+        # Return ALL historical data - no date filtering
+        chart_df = df
         
         # Format performance data
         performance_data = [
@@ -220,7 +219,7 @@ def format_day_analysis(df, date_col):
                     "qty": int(row['qty']),
                     "profitLoss": float(row['pnl'])
                 }
-                for _, row in daily.tail(90).sort_values('date', ascending=False).iterrows()
+                for _, row in daily.sort_values('date', ascending=False).iterrows()
             ]
         }
     except Exception as e:
@@ -437,8 +436,8 @@ def format_trade_analysis(df, date_col, stock_symbol, winning_trades, losing_tra
         np.random.seed(42)  # For reproducibility
         trade_days['prediction_correct'] = np.random.random(len(trade_days)) < 0.60  # 60% accuracy
         
-        # Generate trade records (limit to last 100 for performance)
-        trades_to_show = trade_days.tail(100).copy()
+        # Generate trade records from ALL trade days
+        trades_to_show = trade_days.copy()
         
         print(f"Generating {len(trades_to_show)} trade records...")
         
