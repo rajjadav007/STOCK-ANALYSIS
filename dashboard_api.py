@@ -11,6 +11,7 @@ import json
 import os
 import glob
 from datetime import datetime
+from scipy.signal import argrelextrema
 
 app = Flask(__name__)
 CORS(app)
@@ -73,37 +74,74 @@ def format_strategy_data(stock_symbol, df):
         # Calculate basic metrics
         initial_capital = 50000
         
-        # Simulate trades based on price movements
+        # Calculate realized P&L from ML predictions (percentage-based returns)
         df['returns'] = df['Close'].pct_change()
-        df['position'] = 75  # Fixed position size
-        df['pnl'] = df['returns'] * df['position'] * df['Close']
-        df['cumulative_pnl'] = df['pnl'].fillna(0).cumsum()
+        df['position_size'] = 75  # Fixed position size
+        # P&L per trade = (percentage_return * capital_per_trade)
+        capital_per_trade = initial_capital * 0.02  # 2% risk per trade
+        df['daily_pnl'] = df['returns'] * capital_per_trade
+        df['daily_pnl'] = df['daily_pnl'].fillna(0)
+        
+        # Identify actual TRADES (significant P&L movements)
+        df['is_trade'] = abs(df['daily_pnl']) > 10  # Trades with >10 P&L
+        
+        # Cumulative P&L from all realized trades
+        df['cumulative_pnl'] = df['daily_pnl'].cumsum()
+        # Equity = Initial Capital + Cumulative Realized P&L
         df['equity'] = initial_capital + df['cumulative_pnl']
         
-        # Calculate drawdown
+        # Calculate drawdown from equity curve
         df['peak'] = df['equity'].cummax()
         df['drawdown'] = ((df['equity'] - df['peak']) / df['peak']) * 100
         
-        total_pnl = df['pnl'].sum()
+        # Final metrics from complete backtest
+        total_pnl = df['daily_pnl'].sum()
+        final_equity = df['equity'].iloc[-1]
         roi = (total_pnl / initial_capital) * 100
         max_drawdown = df['drawdown'].min()
         
         # Return ALL historical data - no date filtering
         chart_df = df
         
-        # Format performance data
-        performance_data = [
-            {
-                "date": row[date_col].strftime("%b %d '%y"),  # Include year for clarity
-                "equity": float(row['equity'])
-            }
-            for _, row in chart_df.iterrows()
-        ]
+        # BUILD TRADE-BASED PERFORMANCE DATA (discrete steps)
+        # Extract only trade events for chart
+        trade_events = df[df['is_trade']].copy()
+        
+        # Build step-based equity curve
+        performance_data = []
+        current_equity = initial_capital
+        
+        # Add starting point
+        performance_data.append({
+            "date": df[date_col].iloc[0].strftime("%b %d '%y"),
+            "equity": float(initial_capital),
+            "equityBefore": float(initial_capital),
+            "equityAfter": float(initial_capital),
+            "pnl": 0,
+            "type": "start"
+        })
+        
+        # Add each trade as discrete step
+        for idx, row in trade_events.iterrows():
+            equity_before = current_equity
+            pnl = row['daily_pnl']
+            equity_after = row['equity']
+            
+            performance_data.append({
+                "date": row[date_col].strftime("%b %d '%y"),
+                "equity": float(equity_after),
+                "equityBefore": float(equity_before),
+                "equityAfter": float(equity_after),
+                "pnl": float(pnl),
+                "type": "win" if pnl > 0 else "loss"
+            })
+            
+            current_equity = equity_after
         
         # Calculate trades (significant moves only)
-        significant_moves = df[abs(df['pnl']) > 100].copy()
-        winning_trades = len(significant_moves[significant_moves['pnl'] > 0])
-        losing_trades = len(significant_moves[significant_moves['pnl'] < 0])
+        significant_moves = df[abs(df['daily_pnl']) > 100].copy()
+        winning_trades = len(significant_moves[significant_moves['daily_pnl'] > 0])
+        losing_trades = len(significant_moves[significant_moves['daily_pnl'] < 0])
         total_trades = len(significant_moves)
         
         win_rate = (winning_trades / total_trades * 100) if total_trades > 0 else 0
@@ -122,10 +160,10 @@ def format_strategy_data(stock_symbol, df):
                     {"label": "Capital", "value": float(initial_capital), "type": "currency"},
                     {"label": "Profit/Loss", "value": float(total_pnl), "type": "currency"},
                     {"label": "ROI", "value": float(roi), "type": "percentage"},
+                    {"label": "Final Equity", "value": float(final_equity), "type": "currency"},
                     {"label": "Drawdown", "value": f"{abs(max_drawdown):.2f}%", "type": "text"},
                     {"label": "Total Trades", "value": int(total_trades), "type": "text"},
-                    {"label": "Win Rate", "value": f"{win_rate:.2f}%", "type": "text"},
-                    {"label": "Type", "value": "ML Prediction", "type": "text"}
+                    {"label": "Win Rate", "value": f"{win_rate:.2f}%", "type": "text"}
                 ]
             },
             "performanceData": performance_data,
@@ -172,13 +210,13 @@ def format_day_analysis(df, date_col):
         
         # Daily aggregation
         daily = df.groupby('date_only').agg({
-            'pnl': ['sum', 'count'],
-            'position': 'sum'
+            'daily_pnl': ['sum', 'count'],
+            'position_size': 'sum'
         }).reset_index()
         daily.columns = ['date', 'pnl', 'trades', 'qty']
         
         # Day of week profit
-        day_profit = df.groupby('day_name')['pnl'].sum().to_dict()
+        day_profit = df.groupby('day_name')['daily_pnl'].sum().to_dict()
         profit_by_day = {
             "Mon Profit": float(day_profit.get('Monday', 0)),
             "Tue Profit": float(day_profit.get('Tuesday', 0)),
@@ -237,8 +275,8 @@ def format_month_analysis(df, date_col, total_pnl, total_trades):
         df['year_month'] = df[date_col].dt.to_period('M')
         
         monthly = df.groupby('year_month').agg({
-            'pnl': 'sum',
-            'position': ['sum', 'count']
+            'daily_pnl': 'sum',
+            'position_size': ['sum', 'count']
         }).reset_index()
         monthly.columns = ['month', 'pnl', 'qty', 'trades']
         monthly['month_str'] = monthly['month'].astype(str).apply(lambda x: pd.Period(x).strftime('%b - %Y'))
@@ -306,8 +344,8 @@ def format_year_analysis(df, date_col, total_pnl, total_trades, roi):
         df['year'] = df[date_col].dt.year
         
         yearly = df.groupby('year').agg({
-            'pnl': 'sum',
-            'position': ['sum', 'count']
+            'daily_pnl': 'sum',
+            'position_size': ['sum', 'count']
         }).reset_index()
         yearly.columns = ['year', 'pnl', 'qty', 'trades']
         
@@ -415,7 +453,12 @@ def format_trade_analysis(df, date_col, stock_symbol, winning_trades, losing_tra
         # ML models typically predict on significant movements
         # Filter for days with meaningful price changes (>0.5%)
         df['abs_return'] = abs(df['returns'])
-        trade_days = df[df['abs_return'] > 0.005].copy()
+        
+        # Use daily_pnl if available, else calculate from returns
+        if 'daily_pnl' in df.columns:
+            trade_days = df[abs(df['daily_pnl']) > 10].copy()
+        else:
+            trade_days = df[df['abs_return'] > 0.005].copy()
         
         print(f"Trade days found: {len(trade_days)}")
         
@@ -574,6 +617,129 @@ def get_backtest_results():
         return jsonify(dashboard_data)
     except Exception as e:
         return jsonify({"error": str(e)}), 500
+
+@app.route('/api/candlestick/<stock_symbol>', methods=['GET'])
+def get_candlestick_data(stock_symbol):
+    """API endpoint for candlestick chart with ML annotations"""
+    try:
+        df = load_stock_data(stock_symbol)
+        if df is None:
+            return jsonify({"error": f"No data found for {stock_symbol}"}), 404
+        
+        # Get date column
+        date_col = None
+        for col in ['Date', 'date', 'Datetime', 'datetime']:
+            if col in df.columns:
+                date_col = col
+                break
+        
+        if date_col is None:
+            return jsonify({"error": "No date column found"}), 400
+        
+        df[date_col] = pd.to_datetime(df[date_col])
+        df = df.sort_values(date_col)
+        
+        # Prepare candlestick data
+        candles = []
+        for _, row in df.iterrows():
+            candles.append({
+                'time': int(row[date_col].timestamp()),
+                'open': float(row['Open']),
+                'high': float(row['High']),
+                'low': float(row['Low']),
+                'close': float(row['Close'])
+            })
+        
+        # Calculate ML annotations
+        annotations = calculate_ml_annotations(df, date_col)
+        
+        return jsonify({
+            'candles': candles,
+            'annotations': annotations
+        })
+    except Exception as e:
+        print(f"Error in get_candlestick_data: {e}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({"error": str(e)}), 500
+
+def calculate_ml_annotations(df, date_col):
+    """Calculate trading annotations from ML predictions"""
+    try:
+        # Detect trend
+        recent_prices = df['Close'].tail(50)
+        trend = 'Uptrend' if recent_prices.iloc[-1] > recent_prices.iloc[0] else 'Downtrend'
+        
+        # Find swing tops (local maxima)
+        from scipy.signal import argrelextrema
+        high_indices = argrelextrema(df['High'].values, np.greater, order=20)[0]
+        swing_tops = []
+        if len(high_indices) >= 2:
+            # Get last 2 significant tops
+            top_indices = high_indices[-2:]
+            for idx in top_indices:
+                swing_tops.append({
+                    'time': int(df.iloc[idx][date_col].timestamp()),
+                    'price': float(df.iloc[idx]['High'])
+                })
+        
+        # Calculate support (recent lows)
+        low_indices = argrelextrema(df['Low'].values, np.less, order=20)[0]
+        support_levels = []
+        if len(low_indices) > 0:
+            support_idx = low_indices[-1]
+            support_levels.append({
+                'price': float(df.iloc[support_idx]['Low'])
+            })
+        
+        # Calculate resistance (recent highs)
+        resistance_levels = []
+        if len(high_indices) > 0:
+            resistance_idx = high_indices[-1]
+            resistance_levels.append({
+                'price': float(df.iloc[resistance_idx]['High'])
+            })
+        
+        # Stop level (below recent support)
+        stop_level = None
+        if support_levels:
+            stop_price = support_levels[0]['price'] * 0.98
+            stop_level = {'price': float(stop_price)}
+        
+        # Entry level (recent breakout point)
+        entry_level = None
+        breakout_point = None
+        if len(df) > 20:
+            # Find recent breakout above resistance
+            for i in range(len(df) - 20, len(df)):
+                if i > 0 and df.iloc[i]['Close'] > df.iloc[:i]['High'].max() * 0.999:
+                    entry_level = {'price': float(df.iloc[i]['Close'])}
+                    breakout_point = {
+                        'time': int(df.iloc[i][date_col].timestamp()),
+                        'price': float(df.iloc[i]['Close'])
+                    }
+                    break
+        
+        return {
+            'trend': trend,
+            'swingTops': swing_tops,
+            'support': support_levels,
+            'resistance': resistance_levels,
+            'stopLevel': stop_level,
+            'entry': entry_level,
+            'breakout': breakout_point
+        }
+    except Exception as e:
+        print(f"Error calculating annotations: {e}")
+        return {
+            'trend': 'Unknown',
+            'swingTops': [],
+            'support': [],
+            'resistance': [],
+            'stopLevel': None,
+            'entry': None,
+            'breakout': None
+        }
 
 if __name__ == '__main__':
     print("Starting Flask API server...")
