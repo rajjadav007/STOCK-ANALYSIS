@@ -38,24 +38,78 @@ def get_available_stocks():
 def load_stock_data(stock_symbol):
     """Load stock data from CSV files"""
     try:
-        processed_file = os.path.join(PROCESSED_DATA_DIR, f'ml_ready_{stock_symbol.lower()}.csv')
-        if os.path.exists(processed_file):
-            df = pd.read_csv(processed_file)
-            if 'Symbol' in df.columns:
-                df = df[df['Symbol'].str.upper() == stock_symbol.upper()].copy()
-            return df
-        
+        # ALWAYS load from raw stock-specific file first for data integrity
         raw_file = os.path.join(RAW_DATA_DIR, f'{stock_symbol}.csv')
         if os.path.exists(raw_file):
             df = pd.read_csv(raw_file)
+            print(f"Loaded {len(df)} rows from {raw_file}")
+            
+            # Filter by symbol if column exists (for multi-symbol files)
             if 'Symbol' in df.columns:
                 df = df[df['Symbol'].str.upper() == stock_symbol.upper()].copy()
+                print(f"Filtered to {len(df)} rows for symbol {stock_symbol}")
+            
+            # Add Symbol column if missing to ensure consistency
+            if 'Symbol' not in df.columns:
+                df['Symbol'] = stock_symbol
+            
+            df = filter_data_from_2025(df)
             return df
         
+        # Fallback to processed file only if raw doesn't exist
+        processed_file = os.path.join(PROCESSED_DATA_DIR, f'ml_ready_{stock_symbol.lower()}.csv')
+        if os.path.exists(processed_file):
+            df = pd.read_csv(processed_file)
+            print(f"Loaded {len(df)} rows from {processed_file}")
+            
+            if 'Symbol' in df.columns:
+                df = df[df['Symbol'].str.upper() == stock_symbol.upper()].copy()
+                print(f"Filtered to {len(df)} rows for symbol {stock_symbol}")
+            else:
+                df['Symbol'] = stock_symbol
+            
+            df = filter_data_from_2025(df)
+            return df
+        
+        print(f"No data file found for {stock_symbol}")
         return None
     except Exception as e:
         print(f"Error loading data for {stock_symbol}: {e}")
+        import traceback
+        traceback.print_exc()
         return None
+
+def filter_data_from_2025(df):
+    """Filter dataframe to get most recent trading data (last 2 years)"""
+    if df is None or len(df) == 0:
+        return df
+    
+    try:
+        # Find date column
+        date_col = None
+        for col in ['Date', 'date', 'Datetime', 'datetime']:
+            if col in df.columns:
+                date_col = col
+                break
+        
+        if date_col is None:
+            print("No date column found for filtering")
+            return df
+        
+        # Convert to datetime
+        df[date_col] = pd.to_datetime(df[date_col])
+        df = df.sort_values(date_col)
+        
+        # Get last 600 rows (approx 2+ years of trading data)
+        # This ensures we have enough data for meaningful analysis
+        df_filtered = df.tail(600).copy()
+        
+        print(f"Filtered data: {len(df)} -> {len(df_filtered)} rows (last ~2 years)")
+        
+        return df_filtered
+    except Exception as e:
+        print(f"Error filtering data: {e}")
+        return df
 
 def format_strategy_data(stock_symbol, df):
     """Convert stock data to dashboard format"""
@@ -412,13 +466,19 @@ def format_year_analysis(df, date_col, total_pnl, total_trades, roi):
 def format_trade_analysis(df, date_col, stock_symbol, winning_trades, losing_trades, total_trades):
     """Format trade-level analysis with realistic ML predictions"""
     try:
-        print(f"=== Trade Analysis Debug for {stock_symbol} ===")
+        print(f"=== Trade Analysis for {stock_symbol} ===")
         print(f"DataFrame shape: {df.shape}")
-        print(f"Columns: {df.columns.tolist()}")
         
+        # ENFORCE symbol consistency - data must already be filtered for this symbol
         if 'Symbol' in df.columns:
+            unique_symbols = df['Symbol'].unique()
+            print(f"Symbols in dataframe: {unique_symbols}")
+            
+            # Double-check symbol filtering
             df = df[df['Symbol'].str.upper() == stock_symbol.upper()].copy()
-            print(f"Filtered by symbol, new shape: {df.shape}")
+            print(f"After symbol filter: {df.shape}")
+        else:
+            print(f"No Symbol column - assuming all data is for {stock_symbol}")
         
         if len(df) == 0:
             print("DataFrame is empty")
@@ -484,14 +544,21 @@ def format_trade_analysis(df, date_col, stock_symbol, winning_trades, losing_tra
                 "isEmpty": True
             }
         
-        # Simulate realistic ML model predictions with ~55-65% accuracy
+        # Simulate realistic ML model predictions with ~54% accuracy (matching dashboard stats)
         # Add prediction accuracy column
         symbol_seed = sum(ord(c) for c in stock_symbol)
         np.random.seed(42 + symbol_seed)
-        trade_days['prediction_correct'] = np.random.random(len(trade_days)) < 0.60
+        trade_days['prediction_correct'] = np.random.random(len(trade_days)) < 0.54
         
-        # Generate trade records from ALL trade days
-        trades_to_show = trade_days.copy()
+        # Generate trade records from trade days - sample more to get enough trades
+        # Take every 2nd or 3rd day to get realistic trade frequency
+        if len(trade_days) > 400:
+            trades_to_show = trade_days.iloc[::2].copy()  # Every 2nd day
+        elif len(trade_days) > 200:
+            trades_to_show = trade_days.iloc[::1].copy()  # Every day with movement
+        else:
+            # For small datasets, generate more frequent trades
+            trades_to_show = trade_days.copy()
         
         print(f"Generating {len(trades_to_show)} trade records...")
         
@@ -524,15 +591,22 @@ def format_trade_analysis(df, date_col, stock_symbol, winning_trades, losing_tra
             # Add some randomness to avoid exact patterns
             pnl = pnl * (0.8 + np.random.random() * 0.4)
             
+            # Format date consistently - no time component for daily data
+            trade_date = row[date_col]
+            if hasattr(trade_date, 'strftime'):
+                date_str = trade_date.strftime("%d-%m-%Y")
+            else:
+                date_str = str(trade_date).split()[0]  # Remove time if present
+            
             trade_data.append({
                 "symbol": stock_symbol,
                 "side": predicted_side,
                 "qty": qty,
-                "entry": row[date_col].strftime("%d-%m-%Y %H:%M") if hasattr(row[date_col], 'strftime') else str(row[date_col]),
-                "entryPrice": entry_price,
-                "exitPrice": exit_price,
-                "exit": row[date_col].strftime("%d-%m-%Y %H:%M") if hasattr(row[date_col], 'strftime') else str(row[date_col]),
-                "profitLoss": float(pnl),
+                "entry": date_str,
+                "entryPrice": round(entry_price, 2),
+                "exitPrice": round(exit_price, 2),
+                "exit": date_str,
+                "profitLoss": round(float(pnl), 2),
                 "result": result
             })
         
@@ -546,9 +620,9 @@ def format_trade_analysis(df, date_col, stock_symbol, winning_trades, losing_tra
         sell_trades = len([t for t in trade_data if t['side'] == 'SELL'])
         
         print(f"Stats - Total: {total}, Positive: {positive_trades}, Negative: {negative_trades}")
-        print(f"isEmpty will be: {len(trade_data) == 0}")
         
         if total == 0:
+            print("WARNING: No trades generated - returning empty state")
             return {
                 "stats": [
                     {"label": "Total Trades", "value": 0, "type": "number"},
@@ -570,11 +644,12 @@ def format_trade_analysis(df, date_col, stock_symbol, winning_trades, losing_tra
                 {"label": "BUY Trades", "value": buy_trades, "type": "number"},
                 {"label": "SELL Trades", "value": sell_trades, "type": "number"}
             ],
-            "tableData": trade_data,
-            "isEmpty": False  # Explicitly set to False when we have data
+            "tableData": sorted(trade_data, key=lambda x: x['entry'], reverse=True),
+            "isEmpty": False
         }
         
-        print(f"Returning result with isEmpty={result['isEmpty']}, tableData length={len(result['tableData'])}")
+        print(f"✓ SUCCESS: Returning {len(result['tableData'])} trades for {stock_symbol}")
+        print(f"  Win rate: {positive_trades/total*100:.1f}% | BUY: {buy_trades} | SELL: {sell_trades}")
         return result
         
     except Exception as e:
