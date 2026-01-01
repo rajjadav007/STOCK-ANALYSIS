@@ -213,10 +213,11 @@ function App() {
 
   const handleStockChange = (stock) => {
     if (stock !== selectedStock) {
+      // Clear old data immediately
       setDashboardData(null);
       setCandlestickData(null);
+      // Update symbol - will trigger data reload via useEffect
       setSelectedStock(stock);
-      setActiveTab('summary');
     }
   };
 

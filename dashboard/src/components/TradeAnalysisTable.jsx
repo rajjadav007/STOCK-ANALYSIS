@@ -18,11 +18,7 @@ export const TradeAnalysisTable = ({ data, isEmpty, selectedStock }) => {
     
     let filtered = [...data];
     
-    if (selectedStock) {
-      filtered = filtered.filter(row => 
-        row.symbol === selectedStock
-      );
-    }
+    // Symbol is already filtered by backend - don't filter again
     
     if (sideFilter !== 'ALL') {
       filtered = filtered.filter(row => 
@@ -55,7 +51,7 @@ export const TradeAnalysisTable = ({ data, isEmpty, selectedStock }) => {
     }
     
     return filtered;
-  }, [data, timePeriod, sideFilter, resultFilter, selectedStock]);
+  }, [data, timePeriod, sideFilter, resultFilter]);
 
   return (
     <div className="table-section">
@@ -100,14 +96,23 @@ export const TradeAnalysisTable = ({ data, isEmpty, selectedStock }) => {
       </div>
 
       <div className="table-container">
-        {(isEmpty || filteredData.length === 0) ? (
+        {(isEmpty === true && (!data || data.length === 0)) ? (
           <div style={{ 
             padding: '80px 20px', 
             textAlign: 'center', 
             color: '#6b7280',
             fontSize: '15px'
           }}>
-            {isEmpty ? 'Currently, no trade analysis has been found!' : 'No trades match the selected filters'}
+            Currently, no trade analysis has been found!
+          </div>
+        ) : filteredData.length === 0 ? (
+          <div style={{ 
+            padding: '80px 20px', 
+            textAlign: 'center', 
+            color: '#6b7280',
+            fontSize: '15px'
+          }}>
+            No trades match the selected filters
           </div>
         ) : (
           <table className="data-table">
