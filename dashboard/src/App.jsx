@@ -189,11 +189,14 @@ function App() {
   useEffect(() => {
     const loadData = async () => {
       setLoading(true);
+      setDashboardData(null);
+      setCandlestickData(null);
+      
       try {
         const data = await dataService.getStockData(selectedStock);
+        
         setDashboardData(data);
         
-        // Load candlestick data
         const candleData = await dataService.getCandlestickData(selectedStock);
         setCandlestickData(candleData);
       } catch (error) {
@@ -209,7 +212,12 @@ function App() {
   }, [selectedStock]);
 
   const handleStockChange = (stock) => {
-    setSelectedStock(stock);
+    if (stock !== selectedStock) {
+      setDashboardData(null);
+      setCandlestickData(null);
+      setSelectedStock(stock);
+      setActiveTab('summary');
+    }
   };
 
   const tabs = [
@@ -241,6 +249,7 @@ function App() {
               data={dashboardData.performanceData}
               timeFilter={timeFilter}
               onTimeFilterChange={setTimeFilter}
+              candlestickData={candlestickData?.candles}
             />
             <div className="disclaimer">
               <div className="disclaimer-title">Disclaimer</div>
@@ -302,6 +311,7 @@ function App() {
             <TradeAnalysisTable 
               data={dashboardData.tradeAnalysis.tableData}
               isEmpty={dashboardData.tradeAnalysis.isEmpty}
+              selectedStock={selectedStock}
             />
           </>
         );

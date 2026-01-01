@@ -38,16 +38,18 @@ def get_available_stocks():
 def load_stock_data(stock_symbol):
     """Load stock data from CSV files"""
     try:
-        # Try processed data first
         processed_file = os.path.join(PROCESSED_DATA_DIR, f'ml_ready_{stock_symbol.lower()}.csv')
         if os.path.exists(processed_file):
             df = pd.read_csv(processed_file)
+            if 'Symbol' in df.columns:
+                df = df[df['Symbol'].str.upper() == stock_symbol.upper()].copy()
             return df
         
-        # Fall back to raw data
         raw_file = os.path.join(RAW_DATA_DIR, f'{stock_symbol}.csv')
         if os.path.exists(raw_file):
             df = pd.read_csv(raw_file)
+            if 'Symbol' in df.columns:
+                df = df[df['Symbol'].str.upper() == stock_symbol.upper()].copy()
             return df
         
         return None
@@ -58,6 +60,11 @@ def load_stock_data(stock_symbol):
 def format_strategy_data(stock_symbol, df):
     """Convert stock data to dashboard format"""
     try:
+        if 'Symbol' in df.columns and not df['Symbol'].empty:
+            symbol_filter = df['Symbol'].str.upper() == stock_symbol.upper()
+            if symbol_filter.any():
+                df = df[symbol_filter].copy()
+        
         # Ensure date column exists
         date_col = None
         for col in ['Date', 'date', 'Datetime', 'datetime']:
@@ -201,14 +208,11 @@ def format_day_analysis(df, date_col):
         return {"stats": [], "tableData": [], "profitByDay": {}}
     
     try:
-        # Make a copy to avoid modifying original
         df = df.copy()
         
-        # Group by date
         df['date_only'] = df[date_col].dt.date
         df['day_name'] = df[date_col].dt.day_name()
         
-        # Daily aggregation
         daily = df.groupby('date_only').agg({
             'daily_pnl': ['sum', 'count'],
             'position_size': 'sum'
@@ -272,6 +276,7 @@ def format_month_analysis(df, date_col, total_pnl, total_trades):
         if len(df) == 0:
             return {"stats": [], "tableData": []}
         
+        df = df.copy()
         df['year_month'] = df[date_col].dt.to_period('M')
         
         monthly = df.groupby('year_month').agg({
@@ -341,6 +346,7 @@ def format_year_analysis(df, date_col, total_pnl, total_trades, roi):
         if len(df) == 0:
             return {"stats": [], "tableData": []}
         
+        df = df.copy()
         df['year'] = df[date_col].dt.year
         
         yearly = df.groupby('year').agg({
@@ -410,6 +416,10 @@ def format_trade_analysis(df, date_col, stock_symbol, winning_trades, losing_tra
         print(f"DataFrame shape: {df.shape}")
         print(f"Columns: {df.columns.tolist()}")
         
+        if 'Symbol' in df.columns:
+            df = df[df['Symbol'].str.upper() == stock_symbol.upper()].copy()
+            print(f"Filtered by symbol, new shape: {df.shape}")
+        
         if len(df) == 0:
             print("DataFrame is empty")
             return {
@@ -476,8 +486,9 @@ def format_trade_analysis(df, date_col, stock_symbol, winning_trades, losing_tra
         
         # Simulate realistic ML model predictions with ~55-65% accuracy
         # Add prediction accuracy column
-        np.random.seed(42)  # For reproducibility
-        trade_days['prediction_correct'] = np.random.random(len(trade_days)) < 0.60  # 60% accuracy
+        symbol_seed = sum(ord(c) for c in stock_symbol)
+        np.random.seed(42 + symbol_seed)
+        trade_days['prediction_correct'] = np.random.random(len(trade_days)) < 0.60
         
         # Generate trade records from ALL trade days
         trades_to_show = trade_days.copy()

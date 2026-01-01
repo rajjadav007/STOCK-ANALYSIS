@@ -38,12 +38,6 @@ class DataService {
 
   // Load stock predictions and backtest results from Flask API
   async getStockData(stockSymbol) {
-    // Check cache first
-    if (this.cache[stockSymbol]) {
-      console.log(`Loading ${stockSymbol} from cache`);
-      return this.cache[stockSymbol];
-    }
-
     try {
       console.log(`Fetching real data for ${stockSymbol} from Flask API...`);
       const response = await fetch(`${this.apiUrl}/stock/${stockSymbol}`);
@@ -58,11 +52,8 @@ class DataService {
         throw new Error(data.error);
       }
       
-      // Enhance data with additional calculations if needed
       const enhancedData = this.enhanceApiData(data, stockSymbol);
       
-      // Cache the result
-      this.cache[stockSymbol] = enhancedData;
       console.log(`Successfully loaded real data for ${stockSymbol}`);
       
       return enhancedData;
@@ -70,7 +61,6 @@ class DataService {
       console.error(`Error loading real data for ${stockSymbol}:`, error);
       console.log(`Falling back to generated sample data for ${stockSymbol}`);
       
-      // Fallback to sample data if API fails
       const fallbackData = this.generateSampleData(stockSymbol);
       return fallbackData;
     }

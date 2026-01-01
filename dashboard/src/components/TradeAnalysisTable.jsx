@@ -1,6 +1,6 @@
 import React, { useState, useMemo } from 'react';
 
-export const TradeAnalysisTable = ({ data, isEmpty }) => {
+export const TradeAnalysisTable = ({ data, isEmpty, selectedStock }) => {
   const [timePeriod, setTimePeriod] = useState('All Time');
   const [sideFilter, setSideFilter] = useState('ALL');
   const [resultFilter, setResultFilter] = useState('ALL');
@@ -18,14 +18,18 @@ export const TradeAnalysisTable = ({ data, isEmpty }) => {
     
     let filtered = [...data];
     
-    // Apply side filter (Buy/Sell)
+    if (selectedStock) {
+      filtered = filtered.filter(row => 
+        row.symbol === selectedStock
+      );
+    }
+    
     if (sideFilter !== 'ALL') {
       filtered = filtered.filter(row => 
         row.side?.toUpperCase() === sideFilter.toUpperCase()
       );
     }
     
-    // Apply result filter (Profit/Loss)
     if (resultFilter !== 'ALL') {
       filtered = filtered.filter(row => {
         if (resultFilter === 'Profit') return row.profitLoss > 0;
@@ -34,27 +38,24 @@ export const TradeAnalysisTable = ({ data, isEmpty }) => {
       });
     }
     
-    // Apply time period filter (limit number of rows) - SLICE FROM END (most recent)
-    let rowsToShow;
-    switch (timePeriod) {
-      case 'Last Month':
-        rowsToShow = Math.min(30, filtered.length);
-        break;
-      case 'Last 3 Months':
-        rowsToShow = Math.min(90, filtered.length);
-        break;
-      case 'Last 6 Months':
-        rowsToShow = Math.min(180, filtered.length);
-        break;
-      case 'All Time':
-      default:
-        rowsToShow = filtered.length;
-        break;
+    let rowsToShow = filtered.length;
+    if (timePeriod !== 'All Time') {
+      switch (timePeriod) {
+        case 'Last Month':
+          rowsToShow = Math.min(30, filtered.length);
+          break;
+        case 'Last 3 Months':
+          rowsToShow = Math.min(90, filtered.length);
+          break;
+        case 'Last 6 Months':
+          rowsToShow = Math.min(180, filtered.length);
+          break;
+      }
+      filtered = filtered.slice(-rowsToShow);
     }
     
-    // Take LAST N rows (most recent trades)
-    return filtered.slice(-rowsToShow);
-  }, [data, timePeriod, sideFilter, resultFilter]);
+    return filtered;
+  }, [data, timePeriod, sideFilter, resultFilter, selectedStock]);
 
   return (
     <div className="table-section">
@@ -66,10 +67,10 @@ export const TradeAnalysisTable = ({ data, isEmpty }) => {
             value={timePeriod}
             onChange={(e) => setTimePeriod(e.target.value)}
           >
+            <option value="All Time">All Time</option>
             <option value="Last Month">Last Month</option>
             <option value="Last 3 Months">Last 3 Months</option>
             <option value="Last 6 Months">Last 6 Months</option>
-            <option value="All Time">All Time</option>
           </select>
           <select 
             className="table-dropdown"
@@ -77,8 +78,8 @@ export const TradeAnalysisTable = ({ data, isEmpty }) => {
             onChange={(e) => setSideFilter(e.target.value)}
           >
             <option value="ALL">ALL</option>
-            <option value="Buy">Buy</option>
-            <option value="Sell">Sell</option>
+            <option value="BUY">Buy</option>
+            <option value="SELL">Sell</option>
           </select>
           <select 
             className="table-dropdown"
@@ -99,14 +100,14 @@ export const TradeAnalysisTable = ({ data, isEmpty }) => {
       </div>
 
       <div className="table-container">
-        {isEmpty ? (
+        {(isEmpty || filteredData.length === 0) ? (
           <div style={{ 
             padding: '80px 20px', 
             textAlign: 'center', 
             color: '#6b7280',
             fontSize: '15px'
           }}>
-            Currently, no trade analysis has been found!
+            {isEmpty ? 'Currently, no trade analysis has been found!' : 'No trades match the selected filters'}
           </div>
         ) : (
           <table className="data-table">
