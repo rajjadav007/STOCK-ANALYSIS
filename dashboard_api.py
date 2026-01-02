@@ -53,7 +53,6 @@ def load_stock_data(stock_symbol):
             if 'Symbol' not in df.columns:
                 df['Symbol'] = stock_symbol
             
-            df = filter_data_from_2025(df)
             return df
         
         # Fallback to processed file only if raw doesn't exist
@@ -68,7 +67,6 @@ def load_stock_data(stock_symbol):
             else:
                 df['Symbol'] = stock_symbol
             
-            df = filter_data_from_2025(df)
             return df
         
         print(f"No data file found for {stock_symbol}")
@@ -80,7 +78,7 @@ def load_stock_data(stock_symbol):
         return None
 
 def filter_data_from_2025(df):
-    """Filter dataframe to get most recent trading data (last 2 years)"""
+    """Process dataframe with full historical data (no year filtering)"""
     if df is None or len(df) == 0:
         return df
     
@@ -93,20 +91,16 @@ def filter_data_from_2025(df):
                 break
         
         if date_col is None:
-            print("No date column found for filtering")
+            print("No date column found")
             return df
         
-        # Convert to datetime
+        # Convert to datetime and sort
         df[date_col] = pd.to_datetime(df[date_col])
         df = df.sort_values(date_col)
         
-        # Get last 600 rows (approx 2+ years of trading data)
-        # This ensures we have enough data for meaningful analysis
-        df_filtered = df.tail(600).copy()
+        print(f"Loaded historical data: {len(df)} rows spanning {df[date_col].min().year} to {df[date_col].max().year}")
         
-        print(f"Filtered data: {len(df)} -> {len(df_filtered)} rows (last ~2 years)")
-        
-        return df_filtered
+        return df
     except Exception as e:
         print(f"Error filtering data: {e}")
         return df
