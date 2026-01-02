@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Symbol Filter Test</title>
+    <style>
+        body { font-family: Arial; padding: 20px; background: #1a1f2e; color: #e4e7eb; }
+        h2 { color: #34d399; }
+        table { border-collapse: collapse; margin: 20px 0; width: 100%; }
+        th, td { border: 1px solid #34d399; padding: 8px; text-align: left; }
+        th { background: #0f1423; }
+        .positive { color: #34d399; }
+        .negative { color: #f87171; }
+        button { background: #34d399; color: #0a0e1a; border: none; padding: 10px 20px; margin: 5px; cursor: pointer; }
+    </style>
+</head>
+<body>
+    <h1>Trade Symbol Filter Test</h1>
+    <div>
+        <button onclick="testStock('RELIANCE')">Test RELIANCE</button>
+        <button onclick="testStock('INFY')">Test INFY</button>
+        <button onclick="testStock('HDFCBANK')">Test HDFCBANK</button>
+        <button onclick="testStock('TCS')">Test TCS</button>
+    </div>
+    
+    <div id="results"></div>
+
+    <script>
+        async function testStock(symbol) {
+            const resultsDiv = document.getElementById('results');
+            resultsDiv.innerHTML = `<p>Loading ${symbol}...</p>`;
+            
+            try {
+                const response = await fetch(`http://localhost:5000/api/stock/${symbol}`);
+                const data = await response.json();
+                
+                const trades = data.tradeAnalysis.tableData.slice(0, 10);
+                const symbols = [...new Set(trades.map(t => t.symbol))];
+                
+                let html = `
+                    <h2>${symbol} - ${trades.length} trades (showing first 10 of ${data.tradeAnalysis.tableData.length})</h2>
+                    <p><strong>Unique symbols in data:</strong> ${symbols.join(', ')}</p>
+                    <table>
+                        <tr>
+                            <th>Symbol</th>
+                            <th>Side</th>
+                            <th>Entry</th>
+                            <th>Exit</th>
+                            <th>P/L</th>
+                            <th>Result</th>
+                        </tr>
+                `;
+                
+                trades.forEach(t => {
+                    const pnlClass = t.profitLoss > 0 ? 'positive' : 'negative';
+                    html += `
+                        <tr>
+                            <td><strong>${t.symbol}</strong></td>
+                            <td>${t.side}</td>
+                            <td>${t.entry}</td>
+                            <td>${t.exit}</td>
+                            <td class="${pnlClass}">${t.profitLoss}</td>
+                            <td>${t.result}</td>
+                        </tr>
+                    `;
+                });
+                
+                html += '</table>';
+                
+                // Check for symbol leaks
+                const hasWrongSymbol = symbols.some(s => s !== symbol);
+                if (hasWrongSymbol) {
+                    html += `<p style="color: #f87171; font-weight: bold;">⚠️ SYMBOL LEAK DETECTED! Expected only ${symbol}, but found: ${symbols.join(', ')}</p>`;
+                } else {
+                    html += `<p style="color: #34d399; font-weight: bold;">✅ CORRECT! All trades are for ${symbol}</p>`;
+                }
+                
+                resultsDiv.innerHTML = html;
+            } catch (error) {
+                resultsDiv.innerHTML = `<p style="color: #f87171;">Error: ${error.message}</p>`;
+            }
+        }
+        
+        // Auto-test on load
+        window.onload = () => testStock('RELIANCE');
+    </script>
+</body>
+</html>
