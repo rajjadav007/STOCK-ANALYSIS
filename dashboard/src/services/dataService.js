@@ -373,43 +373,118 @@ class DataService {
   }
 
   calculateYearAnalysis(trades, totalTrades, roi, totalPnL) {
+    // Group trades by year from actual trade dates
+    const yearlyData = {};
+    
+    trades.forEach(trade => {
+      // Extract year from trade date
+      const year = this.extractYearFromDate(trade.date || trade.entryDate);
+      
+      if (!yearlyData[year]) {
+        yearlyData[year] = {
+          trades: 0,
+          pnl: 0,
+          qty: 0
+        };
+      }
+      
+      yearlyData[year].trades += 1;
+      yearlyData[year].pnl += trade.pnl || 0;
+      yearlyData[year].qty += trade.qty || 75;
+    });
+    
+    // Convert to array and sort by year
+    const years = Object.keys(yearlyData).map(y => parseInt(y)).sort();
+    const positiveYears = years.filter(year => yearlyData[year].pnl > 0).length;
+    const totalYears = years.length;
+    
+    if (totalYears === 0) {
+      return {
+        stats: [
+          { label: "Total Years", value: 0, type: "number" },
+          { label: "Positive Years", value: "0 (0%)", type: "text", className: "positive" },
+          { label: "Negative Years", value: "0 (0%)", type: "text", className: "negative" },
+          { label: "Year Average Profit", value: 0, type: "currency" },
+          { label: "Year ROI", value: 0, type: "percentage" },
+          { label: "Year Max Profit", value: 0, type: "currency", className: "positive" },
+          { label: "Year Average Trades", value: 0, type: "number" }
+        ],
+        tableData: []
+      };
+    }
+    
+    const yearlyPnLs = years.map(year => yearlyData[year].pnl);
+    const yearlyTradeCounts = years.map(year => yearlyData[year].trades);
+    const avgPnL = yearlyPnLs.reduce((a, b) => a + b, 0) / totalYears;
+    const maxPnL = Math.max(...yearlyPnLs);
+    const avgTrades = yearlyTradeCounts.reduce((a, b) => a + b, 0) / totalYears;
+    
+    // Build table data
+    const tableData = years.map(year => {
+      const data = yearlyData[year];
+      const yearRoi = (data.pnl / 50000) * 100;
+      
+      return {
+        year: year.toString(),
+        trades: data.trades,
+        targets: 0,
+        stopLoss: Math.round(data.trades * 0.65),
+        cover: Math.round(data.trades * 0.35),
+        buyTrades: data.trades,
+        sellTrades: 0,
+        qty: data.qty,
+        roi: yearRoi,
+        profitLoss: data.pnl
+      };
+    });
+    
+    // Add total row
+    tableData.push({
+      year: "Total",
+      trades: totalTrades,
+      targets: 0,
+      stopLoss: Math.round(totalTrades * 0.65),
+      cover: Math.round(totalTrades * 0.35),
+      buyTrades: totalTrades,
+      sellTrades: 0,
+      qty: totalTrades * 75,
+      roi: 0,
+      profitLoss: totalPnL
+    });
+    
     return {
       stats: [
-        { label: "Total Years", value: 1, type: "number" },
-        { label: "Positive Years", value: "1 (100%)", type: "text", className: "positive" },
-        { label: "Negative Years", value: "0 (0%)", type: "text", className: "negative" },
-        { label: "Year Average Profit", value: totalPnL, type: "currency" },
+        { label: "Total Years", value: totalYears, type: "number" },
+        { label: "Positive Years", value: `${positiveYears} (${Math.round(positiveYears/totalYears*100)}%)`, type: "text", className: "positive" },
+        { label: "Negative Years", value: `${totalYears - positiveYears} (${Math.round((totalYears-positiveYears)/totalYears*100)}%)`, type: "text", className: "negative" },
+        { label: "Year Average Profit", value: avgPnL, type: "currency" },
         { label: "Year ROI", value: roi, type: "percentage" },
-        { label: "Year Max Profit", value: totalPnL, type: "currency", className: "positive" },
-        { label: "Year Average Trades", value: totalTrades, type: "number" }
+        { label: "Year Max Profit", value: maxPnL, type: "currency", className: "positive" },
+        { label: "Year Average Trades", value: Math.round(avgTrades), type: "number" }
       ],
-      tableData: [
-        {
-          year: "2025",
-          trades: totalTrades,
-          targets: 0,
-          stopLoss: Math.round(totalTrades * 0.65),
-          cover: Math.round(totalTrades * 0.35),
-          buyTrades: totalTrades,
-          sellTrades: 0,
-          qty: totalTrades * 75,
-          roi: roi,
-          profitLoss: totalPnL
-        },
-        {
-          year: "Total",
-          trades: totalTrades,
-          targets: 0,
-          stopLoss: Math.round(totalTrades * 0.65),
-          cover: Math.round(totalTrades * 0.35),
-          buyTrades: totalTrades,
-          sellTrades: 0,
-          qty: totalTrades * 75,
-          roi: 0,
-          profitLoss: totalPnL
-        }
-      ]
+      tableData: tableData
     };
+  }
+  
+  extractYearFromDate(dateStr) {
+    if (!dateStr) return new Date().getFullYear();
+    
+    // Try different date formats
+    // Format: "Dec 25 '24" or "Dec 25 '2024"
+    const match = dateStr.match(/'(\d{2,4})/);
+    if (match) {
+      let year = parseInt(match[1]);
+      if (year < 100) year += 2000; // Convert 2-digit to 4-digit
+      return year;
+    }
+    
+    // Try standard date parsing
+    const date = new Date(dateStr);
+    if (!isNaN(date.getTime())) {
+      return date.getFullYear();
+    }
+    
+    return new Date().getFullYear();
   }
 
   calculateTradeAnalysis(trades, stockSymbol = 'UNKNOWN') {
