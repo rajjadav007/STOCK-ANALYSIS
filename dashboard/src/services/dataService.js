@@ -239,7 +239,7 @@ class DataService {
       dayAnalysis: this.calculateDayAnalysis(trades),
       monthAnalysis: this.calculateMonthAnalysis(trades, totalPnL),
       yearAnalysis: this.calculateYearAnalysis(trades, totalTrades, roi, totalPnL),
-      tradeAnalysis: this.calculateTradeAnalysis(trades),
+      tradeAnalysis: this.calculateTradeAnalysis(trades, stockSymbol),
       drawdownAnalysis: {
         drawdownInfo: {
           drawdown: `${Math.abs(maxDrawdown).toFixed(2)}%`,
@@ -412,7 +412,7 @@ class DataService {
     };
   }
 
-  calculateTradeAnalysis(trades) {
+  calculateTradeAnalysis(trades, stockSymbol = 'UNKNOWN') {
     const positiveT = trades.filter(t => t.pnl > 0).length;
     const negativeT = trades.filter(t => t.pnl < 0).length;
     const total = trades.length;
@@ -424,7 +424,7 @@ class DataService {
       const side = trade.side || (trade.pnl > 0 ? 'Buy' : 'Buy');
       
       return {
-        symbol: trade.symbol || 'INFY',
+        symbol: trade.symbol || stockSymbol,
         side: side,
         qty: trade.qty || 75,
         entry: trade.entryDate || new Date(Date.now() - (total - index) * 24 * 60 * 60 * 1000).toLocaleDateString('en-GB').replace(/\//g, '-'),

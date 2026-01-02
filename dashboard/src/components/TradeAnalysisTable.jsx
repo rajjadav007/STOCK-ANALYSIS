@@ -1,9 +1,18 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 
 export const TradeAnalysisTable = ({ data, isEmpty, selectedStock }) => {
   const [timePeriod, setTimePeriod] = useState('All Time');
   const [sideFilter, setSideFilter] = useState('ALL');
   const [resultFilter, setResultFilter] = useState('ALL');
+
+  useEffect(() => {
+    console.log(`[TradeAnalysisTable] Received ${data?.length || 0} trades for ${selectedStock}`);
+    if (data && data.length > 0) {
+      const symbols = [...new Set(data.map(t => t.symbol))];
+      console.log(`[TradeAnalysisTable] Unique symbols in data:`, symbols);
+      console.log(`[TradeAnalysisTable] First 3 trades:`, data.slice(0, 3).map(t => ({ symbol: t.symbol, entry: t.entry })));
+    }
+  }, [data, selectedStock]);
 
   const formatCurrency = (value) => {
     return new Intl.NumberFormat('en-IN', {

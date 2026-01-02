@@ -193,7 +193,12 @@ function App() {
       setCandlestickData(null);
       
       try {
+        console.log(`[App] Loading data for: ${selectedStock}`);
         const data = await dataService.getStockData(selectedStock);
+        
+        console.log(`[App] Received data for: ${selectedStock}`);
+        console.log(`[App] Trade Analysis trades:`, data?.tradeAnalysis?.tableData?.length || 0);
+        console.log(`[App] First trade symbol:`, data?.tradeAnalysis?.tableData?.[0]?.symbol);
         
         setDashboardData(data);
         
@@ -310,6 +315,7 @@ function App() {
           <>
             <TradeStats stats={dashboardData.tradeAnalysis.stats} />
             <TradeAnalysisTable 
+              key={`trade-${selectedStock}`}
               data={dashboardData.tradeAnalysis.tableData}
               isEmpty={dashboardData.tradeAnalysis.isEmpty}
               selectedStock={selectedStock}
