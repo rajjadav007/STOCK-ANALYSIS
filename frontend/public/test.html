@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>API Connection Test</title>
+    <style>
+        body { 
+            font-family: Arial; 
+            padding: 20px; 
+            background: #0a0e1a; 
+            color: #e4e7eb; 
+        }
+        .status { 
+            padding: 20px; 
+            margin: 10px 0; 
+            border-radius: 8px; 
+            border: 2px solid;
+        }
+        .success { 
+            background: rgba(52, 211, 153, 0.1); 
+            border-color: #34d399; 
+            color: #34d399;
+        }
+        .error { 
+            background: rgba(248, 113, 113, 0.1); 
+            border-color: #f87171; 
+            color: #f87171;
+        }
+        button {
+            background: #34d399;
+            color: #0a0e1a;
+            border: none;
+            padding: 10px 20px;
+            margin: 5px;
+            cursor: pointer;
+            border-radius: 6px;
+            font-weight: 600;
+        }
+        pre {
+            background: #1a1f2e;
+            padding: 15px;
+            border-radius: 6px;
+            overflow-x: auto;
+            max-height: 400px;
+        }
+    </style>
+</head>
+<body>
+    <h1>🔍 Dashboard API Connection Test</h1>
+    
+    <button onclick="testBackend()">Test Backend API</button>
+    <button onclick="testRELIANCE()">Test RELIANCE Data</button>
+    <button onclick="testINFY()">Test INFY Data</button>
+    
+    <div id="results"></div>
+
+    <script>
+        async function testBackend() {
+            const resultsDiv = document.getElementById('results');
+            resultsDiv.innerHTML = '<div class="status">Testing backend...</div>';
+            
+            try {
+                const response = await fetch('http://localhost:5000/api/stocks');
+                const data = await response.json();
+                
+                resultsDiv.innerHTML = `
+                    <div class="status success">
+                        ✅ Backend is ONLINE!<br>
+                        Port: 5000<br>
+                        Status: ${response.status}<br>
+                        Stocks Available: ${data.stocks.length}
+                    </div>
+                    <pre>${JSON.stringify(data.stocks.slice(0, 20), null, 2)}</pre>
+                `;
+            } catch (error) {
+                resultsDiv.innerHTML = `
+                    <div class="status error">
+                        ❌ Backend Connection Failed!<br>
+                        Error: ${error.message}<br>
+                        <br>
+                        Please start the backend:<br>
+                        <code>python dashboard_api.py</code>
+                    </div>
+                `;
+            }
+        }
+        
+        async function testStock(symbol) {
+            const resultsDiv = document.getElementById('results');
+            resultsDiv.innerHTML = `<div class="status">Loading ${symbol} data...</div>`;
+            
+            try {
+                const startTime = Date.now();
+                const response = await fetch(\`http://localhost:5000/api/stock/\${symbol}\`);
+                const loadTime = Date.now() - startTime;
+                
+                if (!response.ok) {
+                    throw new Error(\`HTTP \${response.status}: \${response.statusText}\`);
+                }
+                
+                const data = await response.json();
+                
+                // Check trade data
+                const trades = data.tradeAnalysis?.tableData || [];
+                const symbols = [...new Set(trades.map(t => t.symbol))];
+                const firstTrade = trades[0] || {};
+                
+                let symbolCheck = '';
+                if (symbols.length === 1 && symbols[0] === symbol) {
+                    symbolCheck = '<div style="color: #34d399;">✅ Symbol filtering: CORRECT</div>';
+                } else {
+                    symbolCheck = \`<div style="color: #f87171;">⚠️ Symbol filtering: FAILED (Found: \${symbols.join(', ')})</div>\`;
+                }
+                
+                resultsDiv.innerHTML = \`
+                    <div class="status success">
+                        ✅ \${symbol} Data Loaded Successfully!<br>
+                        Load Time: \${loadTime}ms<br>
+                        Status: \${response.status}<br>
+                        Total Trades: \${trades.length}<br>
+                        \${symbolCheck}
+                    </div>
+                    <h3>Strategy Info:</h3>
+                    <pre>\${JSON.stringify(data.strategy, null, 2)}</pre>
+                    <h3>Summary Metrics:</h3>
+                    <pre>\${JSON.stringify(data.summary.metrics, null, 2)}</pre>
+                    <h3>First 3 Trades:</h3>
+                    <pre>\${JSON.stringify(trades.slice(0, 3), null, 2)}</pre>
+                \`;
+            } catch (error) {
+                resultsDiv.innerHTML = \`
+                    <div class="status error">
+                        ❌ Failed to load \${symbol} data!<br>
+                        Error: \${error.message}
+                    </div>
+                \`;
+            }
+        }
+        
+        function testRELIANCE() { testStock('RELIANCE'); }
+        function testINFY() { testStock('INFY'); }
+        
+        // Auto-test on load
+        window.onload = () => testBackend();
+    </script>
+</body>
+</html>

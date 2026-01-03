@@ -17,11 +17,11 @@ app = Flask(__name__)
 CORS(app)
 
 # Paths
-DATA_DIR = 'data'
+DATA_DIR = '../data'
 RAW_DATA_DIR = os.path.join(DATA_DIR, 'raw')
 PROCESSED_DATA_DIR = os.path.join(DATA_DIR, 'processed')
-MODELS_DIR = 'models'
-RESULTS_DIR = 'results'
+MODELS_DIR = '../models'
+RESULTS_DIR = '../results'
 
 def get_available_stocks():
     """Get list of available stocks from raw data directory"""

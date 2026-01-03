@@ -165,8 +165,12 @@ dmypy.json
 # Cython debug symbols
 cython_debug/
 
-# Node.js / Dashboard
+# Node.js / Frontend Dashboard
 node_modules/
+frontend/node_modules/
+frontend/build/
+frontend/.npm
+frontend/.eslintcache
 dashboard/node_modules/
 dashboard/build/
 dashboard/.npm
@@ -175,3 +179,20 @@ npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 package-lock.json
+.pnp
+.pnp.js
+
+# Testing
+coverage/
+.nyc_output
+
+# Production build
+build/
+dist/
+
+# Misc
+.DS_Store
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local

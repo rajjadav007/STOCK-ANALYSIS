@@ -4,12 +4,21 @@ class DataService {
   constructor() {
     this.cache = {};
     this.apiUrl = 'http://localhost:5000/api';
+    console.log('[DataService] Initialized with API URL:', this.apiUrl);
   }
 
   // Get list of available stocks from Flask API
   async getStockList() {
     try {
-      const response = await fetch(`${this.apiUrl}/stocks`);
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 5000);
+      
+      const response = await fetch(`${this.apiUrl}/stocks`, {
+        signal: controller.signal
+      });
+      
+      clearTimeout(timeoutId);
+      
       if (!response.ok) {
         console.warn('API not available, using default stock list');
         return this.getDefaultStockList();
@@ -39,27 +48,44 @@ class DataService {
   // Load stock predictions and backtest results from Flask API
   async getStockData(stockSymbol) {
     try {
-      console.log(`Fetching real data for ${stockSymbol} from Flask API...`);
-      const response = await fetch(`${this.apiUrl}/stock/${stockSymbol}`);
+      console.log(`[DataService] Fetching real data for ${stockSymbol} from Flask API...`);
+      console.log(`[DataService] URL: ${this.apiUrl}/stock/${stockSymbol}`);
+      
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => {
+        console.log(`[DataService] Timeout reached for ${stockSymbol}`);
+        controller.abort();
+      }, 10000);
+      
+      console.log(`[DataService] Starting fetch...`);
+      const response = await fetch(`${this.apiUrl}/stock/${stockSymbol}`, {
+        signal: controller.signal
+      });
+      
+      clearTimeout(timeoutId);
+      console.log(`[DataService] Fetch completed with status: ${response.status}`);
       
       if (!response.ok) {
         throw new Error(`API returned ${response.status}: ${response.statusText}`);
       }
       
+      console.log(`[DataService] Parsing JSON...`);
       const data = await response.json();
+      console.log(`[DataService] JSON parsed successfully`);
       
       if (data.error) {
         throw new Error(data.error);
       }
       
+      console.log(`[DataService] Enhancing API data...`);
       const enhancedData = this.enhanceApiData(data, stockSymbol);
       
-      console.log(`Successfully loaded real data for ${stockSymbol}`);
+      console.log(`[DataService] Successfully loaded real data for ${stockSymbol}`);
       
       return enhancedData;
     } catch (error) {
-      console.error(`Error loading real data for ${stockSymbol}:`, error);
-      console.log(`Falling back to generated sample data for ${stockSymbol}`);
+      console.error(`[DataService] Error loading real data for ${stockSymbol}:`, error);
+      console.log(`[DataService] Falling back to generated sample data for ${stockSymbol}`);
       
       const fallbackData = this.generateSampleData(stockSymbol);
       return fallbackData;
@@ -70,7 +96,15 @@ class DataService {
   async getCandlestickData(stockSymbol) {
     try {
       console.log(`Fetching candlestick data for ${stockSymbol}...`);
-      const response = await fetch(`${this.apiUrl}/candlestick/${stockSymbol}`);
+      
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 10000);
+      
+      const response = await fetch(`${this.apiUrl}/candlestick/${stockSymbol}`, {
+        signal: controller.signal
+      });
+      
+      clearTimeout(timeoutId);
       
       if (!response.ok) {
         throw new Error(`API returned ${response.status}: ${response.statusText}`);
@@ -156,6 +190,7 @@ class DataService {
 
   // Generate realistic sample data
   generateSampleData(stockSymbol) {
+    console.log(`Generating sample data for ${stockSymbol}...`);
     const today = new Date();
     const daysBack = 365;  // Generate 1 year of sample data
     const initialCapital = 50000;
@@ -191,12 +226,13 @@ class DataService {
         drawdown: drawdown
       });
       
-      // Record significant moves as trades
+      // Record significant moves as trades with symbol
       if (Math.abs(pnl) > 100) {
         trades.push({
           date: date,
           pnl: pnl,
-          qty: 75
+          qty: 75,
+          symbol: stockSymbol  // Add symbol to each trade
         });
       }
     }

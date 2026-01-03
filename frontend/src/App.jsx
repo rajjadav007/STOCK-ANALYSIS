@@ -172,6 +172,7 @@ function App() {
   const [dashboardData, setDashboardData] = useState(null);
   const [candlestickData, setCandlestickData] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
   // Load stock list on mount
   useEffect(() => {
@@ -189,24 +190,42 @@ function App() {
   useEffect(() => {
     const loadData = async () => {
       setLoading(true);
+      setError(null);
       setDashboardData(null);
       setCandlestickData(null);
       
       try {
         console.log(`[App] Loading data for: ${selectedStock}`);
+        console.log(`[App] API URL: ${dataService.apiUrl}/stock/${selectedStock}`);
+        
         const data = await dataService.getStockData(selectedStock);
         
+        if (!data) {
+          throw new Error('No data received from API');
+        }
+        
         console.log(`[App] Received data for: ${selectedStock}`);
+        console.log(`[App] Data keys:`, Object.keys(data));
         console.log(`[App] Trade Analysis trades:`, data?.tradeAnalysis?.tableData?.length || 0);
         console.log(`[App] First trade symbol:`, data?.tradeAnalysis?.tableData?.[0]?.symbol);
         
         setDashboardData(data);
+        console.log(`[App] Dashboard data set successfully`);
         
-        const candleData = await dataService.getCandlestickData(selectedStock);
-        setCandlestickData(candleData);
+        try {
+          const candleData = await dataService.getCandlestickData(selectedStock);
+          setCandlestickData(candleData);
+          console.log(`[App] Candlestick data set successfully`);
+        } catch (candleError) {
+          console.warn('Candlestick data not available:', candleError);
+        }
+        
+        console.log(`[App] Setting loading to false`);
+        setLoading(false);
       } catch (error) {
-        console.error('Error loading stock data:', error);
-      } finally {
+        console.error('[App] ERROR loading stock data:', error);
+        console.error('[App] Error stack:', error.stack);
+        setError(error.message);
         setLoading(false);
       }
     };
@@ -237,12 +256,43 @@ function App() {
     { id: 'parameters', label: 'Parameters' }
   ];
 
+  if (error) {
+      return (
+        <div style={{ padding: '80px 20px', textAlign: 'center', color: '#f87171' }}>
+          <div style={{ fontSize: '18px', marginBottom: '12px' }}>⚠️ Error Loading Data</div>
+          <div style={{ fontSize: '14px', color: '#9ca3af' }}>{error}</div>
+          <div style={{ fontSize: '14px', color: '#6b7280', marginTop: '12px' }}>
+            Please ensure the backend API is running on port 5000
+          </div>
+        </div>
+      );
+    }
+
   const renderTabContent = () => {
     if (loading || !dashboardData) {
       return (
-        <div style={{ padding: '80px 20px', textAlign: 'center', color: '#9ca3af' }}>
-          <div style={{ fontSize: '18px', marginBottom: '12px' }}>Loading {selectedStock} data...</div>
-          <div style={{ fontSize: '14px', color: '#6b7280' }}>Fetching ML predictions and backtest results</div>
+        <div style={{ padding: '100px 20px', textAlign: 'center', minHeight: '50vh' }}>
+          <div style={{
+            width: '50px',
+            height: '50px',
+            border: '4px solid rgba(52, 211, 153, 0.2)',
+            borderTop: '4px solid #34d399',
+            borderRadius: '50%',
+            margin: '0 auto 20px',
+            animation: 'spin 1s linear infinite'
+          }} />
+          <div style={{ fontSize: '18px', color: '#9ca3af', marginBottom: '8px' }}>
+            Loading {selectedStock} data...
+          </div>
+          <div style={{ fontSize: '14px', color: '#6b7280' }}>
+            Fetching ML predictions and backtest results (this may take 5-10 seconds)
+          </div>
+          <style>{`
+            @keyframes spin {
+              0% { transform: rotate(0deg); }
+              100% { transform: rotate(360deg); }
+            }
+          `}</style>
         </div>
       );
     }

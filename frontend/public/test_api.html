@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Direct API Test</title>
+    <style>
+        body { font-family: Arial; padding: 20px; background: #0a0e1a; color: #e4e7eb; }
+        .status { padding: 10px; margin: 10px 0; border-radius: 5px; }
+        .success { background: #065f46; }
+        .error { background: #7f1d1d; }
+        .loading { background: #1e3a8a; }
+    </style>
+</head>
+<body>
+    <h1>API Connection Test</h1>
+    <div id="output"></div>
+
+    <script>
+        const output = document.getElementById('output');
+        
+        function log(message, type = 'loading') {
+            const div = document.createElement('div');
+            div.className = `status ${type}`;
+            div.textContent = message;
+            output.appendChild(div);
+        }
+
+        async function testAPI() {
+            log('Testing connection to http://localhost:5000...');
+            
+            try {
+                // Test 1: Stock list
+                log('1. Fetching stock list...');
+                const stocksResp = await fetch('http://localhost:5000/api/stocks');
+                const stocksData = await stocksResp.json();
+                log(`✓ Stock list: ${stocksData.stocks.length} stocks available`, 'success');
+                
+                // Test 2: Single stock
+                log('2. Fetching RELIANCE data (may take 5-10 seconds)...');
+                const startTime = Date.now();
+                const stockResp = await fetch('http://localhost:5000/api/stock/RELIANCE');
+                const elapsed = ((Date.now() - startTime) / 1000).toFixed(2);
+                const stockData = await stockResp.json();
+                
+                log(`✓ RELIANCE data loaded in ${elapsed}s`, 'success');
+                log(`✓ Trades: ${stockData.tradeAnalysis.tableData.length}`, 'success');
+                log(`✓ First trade symbol: ${stockData.tradeAnalysis.tableData[0].symbol}`, 'success');
+                
+                log('✓✓✓ ALL TESTS PASSED - Backend is working!', 'success');
+                log('If dashboard still shows "Loading...", check browser console for errors (F12)');
+                
+            } catch (error) {
+                log(`✗ Error: ${error.message}`, 'error');
+                log('Backend is not responding. Make sure Flask is running on port 5000', 'error');
+            }
+        }
+
+        testAPI();
+    </script>
+</body>
+</html>
