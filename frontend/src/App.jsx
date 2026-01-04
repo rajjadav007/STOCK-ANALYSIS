@@ -206,6 +206,15 @@ function App() {
         
         console.log(`[App] Received data for: ${selectedStock}`);
         console.log(`[App] Data keys:`, Object.keys(data));
+        console.log(`[App] Data structure:`, {
+          hasSummary: !!data.summary,
+          hasPerformanceData: !!data.performanceData,
+          hasTradeAnalysis: !!data.tradeAnalysis,
+          summaryKeys: data.summary ? Object.keys(data.summary) : [],
+          metricsLength: data.summary?.metrics?.length || 0,
+          performanceDataLength: data.performanceData?.length || 0,
+          tradeAnalysisLength: data.tradeAnalysis?.tableData?.length || 0
+        });
         console.log(`[App] Trade Analysis trades:`, data?.tradeAnalysis?.tableData?.length || 0);
         console.log(`[App] First trade symbol:`, data?.tradeAnalysis?.tableData?.[0]?.symbol);
         
@@ -269,7 +278,7 @@ function App() {
     }
 
   const renderTabContent = () => {
-    if (loading || !dashboardData) {
+    if (loading) {
       return (
         <div style={{ padding: '100px 20px', textAlign: 'center', minHeight: '50vh' }}>
           <div style={{
@@ -297,15 +306,28 @@ function App() {
       );
     }
 
+    if (!dashboardData) {
+      return (
+        <div style={{ padding: '100px 20px', textAlign: 'center', minHeight: '50vh' }}>
+          <div style={{ fontSize: '18px', color: '#ef4444', marginBottom: '8px' }}>
+            No data available
+          </div>
+          <div style={{ fontSize: '14px', color: '#6b7280' }}>
+            Please select a stock from the dropdown above
+          </div>
+        </div>
+      );
+    }
+
     switch (activeTab) {
       case 'summary':
         return (
           <>
             <PerformanceChart 
-              data={dashboardData.performanceData}
+              data={dashboardData?.performanceData || []}
               timeFilter={timeFilter}
               onTimeFilterChange={setTimeFilter}
-              candlestickData={candlestickData?.candles}
+              candlestickData={candlestickData?.candles || []}
             />
             <div className="disclaimer">
               <div className="disclaimer-title">Disclaimer</div>
@@ -339,35 +361,35 @@ function App() {
       case 'day':
         return (
           <>
-            <DayStats stats={dashboardData.dayAnalysis.stats} />
+            <DayStats stats={dashboardData?.dayAnalysis?.stats || {}} />
             <DayAnalysisTable 
-              data={dashboardData.dayAnalysis.tableData}
-              profitByDay={dashboardData.dayAnalysis.profitByDay}
+              data={dashboardData?.dayAnalysis?.tableData || []}
+              profitByDay={dashboardData?.dayAnalysis?.profitByDay || {}}
             />
           </>
         );
       case 'month':
         return (
           <>
-            <MonthStats stats={dashboardData.monthAnalysis.stats} />
-            <MonthAnalysisTable data={dashboardData.monthAnalysis.tableData} />
+            <MonthStats stats={dashboardData?.monthAnalysis?.stats || {}} />
+            <MonthAnalysisTable data={dashboardData?.monthAnalysis?.tableData || []} />
           </>
         );
       case 'year':
         return (
           <>
-            <YearStats stats={dashboardData.yearAnalysis.stats} />
-            <YearAnalysisTable data={dashboardData.yearAnalysis.tableData} />
+            <YearStats stats={dashboardData?.yearAnalysis?.stats || {}} />
+            <YearAnalysisTable data={dashboardData?.yearAnalysis?.tableData || []} />
           </>
         );
       case 'trade':
         return (
           <>
-            <TradeStats stats={dashboardData.tradeAnalysis.stats} />
+            <TradeStats stats={dashboardData?.tradeAnalysis?.stats || {}} />
             <TradeAnalysisTable 
               key={`trade-${selectedStock}`}
-              data={dashboardData.tradeAnalysis.tableData}
-              isEmpty={dashboardData.tradeAnalysis.isEmpty}
+              data={dashboardData?.tradeAnalysis?.tableData || []}
+              isEmpty={dashboardData?.tradeAnalysis?.isEmpty || false}
               selectedStock={selectedStock}
             />
           </>
@@ -375,8 +397,8 @@ function App() {
       case 'drawdown':
         return (
           <DrawdownChart 
-            data={dashboardData.drawdownAnalysis.chartData}
-            drawdownInfo={dashboardData.drawdownAnalysis.drawdownInfo}
+            data={dashboardData?.drawdownAnalysis?.chartData || []}
+            drawdownInfo={dashboardData?.drawdownAnalysis?.drawdownInfo || {}}
             timeFilter={timeFilter}
             onTimeFilterChange={setTimeFilter}
           />
@@ -406,7 +428,7 @@ function App() {
           onTabChange={setActiveTab}
         />
         {activeTab === 'summary' && dashboardData && (
-          <MetricsGrid metrics={dashboardData.summary.metrics} />
+          <MetricsGrid metrics={dashboardData?.summary?.metrics || []} />
         )}
         <div className="dashboard-content">
           {renderTabContent()}

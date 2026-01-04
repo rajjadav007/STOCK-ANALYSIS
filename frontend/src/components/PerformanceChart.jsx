@@ -52,10 +52,19 @@ const CandlestickShape = (props) => {
 };
 
 export const PerformanceChart = ({ data, timeFilter, onTimeFilterChange, candlestickData }) => {
+  console.log('[PerformanceChart] Rendering with:', { 
+    hasData: !!data, 
+    dataLength: data?.length, 
+    hasCandlestickData: !!candlestickData,
+    candlestickLength: candlestickData?.length,
+    timeFilter 
+  });
+
   // Filter data based on time period - using actual trade counts or candlestick data
   const filteredData = useMemo(() => {
     // If we have candlestick data, use that instead
     if (candlestickData && candlestickData.length > 0) {
+      console.log('[PerformanceChart] Using candlestick data:', candlestickData.slice(0, 2));
       if (timeFilter === 'All') return candlestickData;
       
       let candlesToShow;
@@ -79,7 +88,11 @@ export const PerformanceChart = ({ data, timeFilter, onTimeFilterChange, candles
     }
     
     // Otherwise use equity/performance data
-    if (!data || data.length === 0) return [];
+    if (!data || data.length === 0) {
+      console.log('[PerformanceChart] No performance data available');
+      return [];
+    }
+    console.log('[PerformanceChart] Using performance data, total length:', data.length);
     if (timeFilter === 'All') return data;
 
     // Calculate exact number of trades to show based on time period
@@ -180,6 +193,26 @@ export const PerformanceChart = ({ data, timeFilter, onTimeFilterChange, candles
     return null;
   };
 
+  // If no data available, show message
+  if ((!data || data.length === 0) && (!candlestickData || candlestickData.length === 0)) {
+    return (
+      <div className="chart-section">
+        <div className="chart-header">
+          <h3 className="chart-title">Performance Chart</h3>
+        </div>
+        <div className="chart-container" style={{ 
+          display: 'flex', 
+          alignItems: 'center', 
+          justifyContent: 'center',
+          color: '#9ca3af',
+          fontSize: '14px'
+        }}>
+          No performance data available
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="chart-section">
       <div className="chart-header">
@@ -240,17 +273,16 @@ export const PerformanceChart = ({ data, timeFilter, onTimeFilterChange, candles
                 dataKey="high"
                 fill="transparent"
                 shape={(props) => {
-                  const { x, width, payload } = props;
-                  if (!payload) return null;
+                  const { x, y, width, height, payload, yAxis } = props;
+                  if (!payload || !yAxis) return null;
                   
                   const isUpward = payload.close >= payload.open;
                   const color = isUpward ? '#34d399' : '#ef4444';
                   const wickX = x + width / 2;
                   
-                  // Calculate Y positions - need to scale based on domain
-                  const chart = props.yAxis;
-                  const domain = chart.domain;
-                  const range = chart.range;
+                  // Calculate Y positions using yAxis scale
+                  const domain = yAxis.domain || [payload.low, payload.high];
+                  const range = yAxis.range || [y + height, y];
                   const scale = (range[0] - range[1]) / (domain[1] - domain[0]);
                   
                   const getY = (value) => range[1] + (domain[1] - value) * scale;

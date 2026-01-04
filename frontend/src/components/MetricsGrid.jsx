@@ -1,6 +1,23 @@
 import React from 'react';
 
 export const MetricsGrid = ({ metrics }) => {
+  console.log('[MetricsGrid] Rendering with metrics:', metrics?.length || 0);
+  
+  if (!metrics || metrics.length === 0) {
+    return (
+      <div className="metrics-grid" style={{ 
+        display: 'flex', 
+        alignItems: 'center', 
+        justifyContent: 'center',
+        color: '#9ca3af',
+        fontSize: '14px',
+        padding: '2rem'
+      }}>
+        No metrics data available
+      </div>
+    );
+  }
+
   const formatValue = (value, type) => {
     if (type === 'currency') {
       return new Intl.NumberFormat('en-IN', {

@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Test API Connection</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            padding: 20px;
+            background: #0a0e1a;
+            color: white;
+        }
+        .status {
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 5px;
+        }
+        .success { background: #10b981; }
+        .error { background: #ef4444; }
+        .loading { background: #f59e0b; }
+        pre {
+            background: #1a1f2e;
+            padding: 10px;
+            border-radius: 5px;
+            overflow-x: auto;
+        }
+    </style>
+</head>
+<body>
+    <h1>Stock Analysis Dashboard - API Test</h1>
+    <div id="output"></div>
+
+    <script>
+        const output = document.getElementById('output');
+        
+        async function testAPI() {
+            try {
+                output.innerHTML += '<div class="status loading">Testing connection to backend API at http://localhost:5000...</div>';
+                
+                // Test 1: Get stock list
+                output.innerHTML += '<h2>Test 1: Get Stock List</h2>';
+                const stocksResponse = await fetch('http://localhost:5000/api/stocks');
+                const stocksData = await stocksResponse.json();
+                
+                if (stocksData.stocks && stocksData.stocks.length > 0) {
+                    output.innerHTML += '<div class="status success">✓ Stock list loaded successfully</div>';
+                    output.innerHTML += '<pre>' + JSON.stringify(stocksData, null, 2) + '</pre>';
+                    
+                    // Test 2: Get first stock data
+                    const firstStock = stocksData.stocks[0];
+                    output.innerHTML += '<h2>Test 2: Get Stock Data for ' + firstStock + '</h2>';
+                    
+                    const stockDataResponse = await fetch('http://localhost:5000/api/stock/' + firstStock);
+                    const stockData = await stockDataResponse.json();
+                    
+                    output.innerHTML += '<div class="status success">✓ Stock data loaded successfully</div>';
+                    output.innerHTML += '<pre>' + JSON.stringify(stockData, null, 2).substring(0, 1000) + '...</pre>';
+                    
+                    output.innerHTML += '<h2>Frontend React App Status</h2>';
+                    output.innerHTML += '<div class="status success">✓ All API endpoints working correctly!</div>';
+                    output.innerHTML += '<div class="status error">⚠ Your React app might have a JavaScript error. Check browser console (F12) for errors.</div>';
+                } else {
+                    output.innerHTML += '<div class="status error">✗ No stocks found in API response</div>';
+                }
+                
+            } catch (error) {
+                output.innerHTML += '<div class="status error">✗ Error: ' + error.message + '</div>';
+                output.innerHTML += '<div class="status error">Make sure backend is running: python backend/dashboard_api.py</div>';
+            }
+        }
+        
+        testAPI();
+    </script>
+</body>
+</html>

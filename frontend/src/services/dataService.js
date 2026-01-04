@@ -55,7 +55,7 @@ class DataService {
       const timeoutId = setTimeout(() => {
         console.log(`[DataService] Timeout reached for ${stockSymbol}`);
         controller.abort();
-      }, 10000);
+      }, 30000);
       
       console.log(`[DataService] Starting fetch...`);
       const response = await fetch(`${this.apiUrl}/stock/${stockSymbol}`, {
@@ -505,9 +505,17 @@ class DataService {
   extractYearFromDate(dateStr) {
     if (!dateStr) return new Date().getFullYear();
     
+    // Handle Date objects
+    if (dateStr instanceof Date) {
+      return dateStr.getFullYear();
+    }
+    
+    // Convert to string if it's not already
+    const dateString = String(dateStr);
+    
     // Try different date formats
     // Format: "Dec 25 '24" or "Dec 25 '2024"
-    const match = dateStr.match(/'(\d{2,4})/);
+    const match = dateString.match(/'(\d{2,4})/);
     if (match) {
       let year = parseInt(match[1]);
       if (year < 100) year += 2000; // Convert 2-digit to 4-digit
@@ -515,7 +523,7 @@ class DataService {
     }
     
     // Try standard date parsing
-    const date = new Date(dateStr);
+    const date = new Date(dateString);
     if (!isNaN(date.getTime())) {
       return date.getFullYear();
     }
