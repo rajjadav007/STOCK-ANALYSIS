@@ -57,14 +57,17 @@ export const PerformanceChart = ({ data, timeFilter, onTimeFilterChange, candles
     dataLength: data?.length, 
     hasCandlestickData: !!candlestickData,
     candlestickLength: candlestickData?.length,
-    timeFilter 
+    timeFilter,
+    firstCandle: candlestickData?.[0],
+    lastCandle: candlestickData?.[candlestickData.length - 1]
   });
 
   // Filter data based on time period - using actual trade counts or candlestick data
   const filteredData = useMemo(() => {
     // If we have candlestick data, use that instead
     if (candlestickData && candlestickData.length > 0) {
-      console.log('[PerformanceChart] Using candlestick data:', candlestickData.slice(0, 2));
+      console.log('[PerformanceChart] Using candlestick data, first item:', candlestickData[0]);
+      console.log('[PerformanceChart] Candlestick data sample:', candlestickData.slice(0, 2));
       if (timeFilter === 'All') return candlestickData;
       
       let candlesToShow;
@@ -128,6 +131,17 @@ export const PerformanceChart = ({ data, timeFilter, onTimeFilterChange, candles
         const change = data.close - data.open;
         const changePercent = ((change / data.open) * 100).toFixed(2);
         
+        // Format date - use the date field if available, otherwise convert timestamp
+        let displayDate = data.date;
+        if (!displayDate && data.time) {
+          const date = new Date(data.time * 1000);
+          displayDate = date.toLocaleDateString('en-IN', { 
+            month: 'short', 
+            day: 'numeric',
+            year: '2-digit'
+          });
+        }
+        
         return (
           <div style={{
             background: 'rgba(15, 20, 35, 0.95)',
@@ -136,7 +150,7 @@ export const PerformanceChart = ({ data, timeFilter, onTimeFilterChange, candles
             padding: '12px',
             fontSize: '13px'
           }}>
-            <div style={{ color: '#9ca3af', marginBottom: '8px' }}>{data.time || data.date}</div>
+            <div style={{ color: '#9ca3af', marginBottom: '8px' }}>{displayDate}</div>
             <div style={{ display: 'grid', gridTemplateColumns: 'auto auto', gap: '8px 16px', fontSize: '12px' }}>
               <span style={{ color: '#6b7280' }}>Open:</span>
               <span style={{ color: '#e5e7eb', fontWeight: 600 }}>₹{data.open.toFixed(2)}</span>
@@ -243,6 +257,12 @@ export const PerformanceChart = ({ data, timeFilter, onTimeFilterChange, candles
                 style={{ fontSize: '12px' }}
                 tick={{ fill: '#9ca3af' }}
                 tickFormatter={(value) => {
+                  if (!value) return '';
+                  // Check if it's already a formatted string
+                  if (typeof value === 'string' && value.includes("'")) {
+                    return value;
+                  }
+                  // Otherwise convert from timestamp
                   const date = new Date(value * 1000);
                   return date.toLocaleDateString('en-IN', { month: 'short', day: 'numeric' });
                 }}

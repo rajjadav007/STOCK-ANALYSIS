@@ -719,15 +719,22 @@ def get_candlestick_data(stock_symbol):
         df[date_col] = pd.to_datetime(df[date_col])
         df = df.sort_values(date_col)
         
-        # Prepare candlestick data
+        # Prepare candlestick data - format date as readable string
         candles = []
         for _, row in df.iterrows():
+            # Convert timestamp to Unix timestamp for the chart
+            timestamp = int(row[date_col].timestamp())
+            # Also include formatted date for better display
+            formatted_date = row[date_col].strftime("%b %d '%y")
+            
             candles.append({
-                'time': int(row[date_col].timestamp()),
+                'time': timestamp,
+                'date': formatted_date,
                 'open': float(row['Open']),
                 'high': float(row['High']),
                 'low': float(row['Low']),
-                'close': float(row['Close'])
+                'close': float(row['Close']),
+                'volume': float(row.get('Volume', 0))  # Include volume if available
             })
         
         # Calculate ML annotations
